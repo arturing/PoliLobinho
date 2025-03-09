@@ -8,7 +8,7 @@ module unidade_controle(
     output reg zera_CS, 
     output reg rst_global,
 
-    output reg db_estado
+    output reg [4:0] db_estado
 );
 
 parameter INICIAL = 5'd0;
@@ -16,7 +16,7 @@ parameter RESETA_TUDO = 5'd1;
 parameter PREPARA_JOGO = 5'd2;
 parameter ARMAZENA_JOGO = 5'd3;
 parameter PREPARA_JOGO_2 = 5'd4;
-parameter PREPARA_NOITE = 5'd45;
+parameter PREPARA_NOITE = 5'd5;
 
 reg [4:0] Eatual, Eprox;
 
