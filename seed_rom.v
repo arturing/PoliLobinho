@@ -32,7 +32,7 @@ always@(posedge clock) begin
         5'd17: data_out = 00_10_00_00_01; // Jogador 4 é o lobo, Jogador 1 é o médico
         5'd18: data_out = 00_00_10_00_01; // Jogador 4 é o lobo, Jogador 2 é o médico
         5'd19: data_out = 00_00_00_10_01; // Jogador 4 é o lobo, Jogador 3 é o médico
-        default: 5'd0: data_out = 01_10_00_00_00;
+        default: data_out = 01_10_00_00_00;
     endcase
 end
 

@@ -3,6 +3,7 @@ module unidade_controle(
     input reset,
     input jogar,
     input passa,
+);
 
     output reg e_seed_reg,
     output reg zera_CS, 
@@ -18,7 +19,6 @@ parameter ARMAZENA_JOGO = 5'd3;
 parameter PREPARA_JOGO_2 = 5'd4;
 parameter PREPARA_NOITE = 5'd45;
 
-
 reg [4:0] Eatual, Eprox;
 
 // Memoria de estado
@@ -28,6 +28,7 @@ always @(posedge clock or posedge reset) begin
     else
         Eatual <= Eprox;
 end
+
 
 always@(posedge clock) begin
     case(Eatual)
@@ -39,8 +40,7 @@ always@(posedge clock) begin
 
     endcase
 end
-
-
+  
 always @* begin
     rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
