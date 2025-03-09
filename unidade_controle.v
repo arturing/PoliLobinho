@@ -51,6 +51,16 @@ always @* begin
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
 
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
+
+    case (Eatual)
+        INICIAL: db_estado = INICIAL;
+        RESETA_TUDO: db_estado = RESETA_TUDO;
+        PREPARA_JOGO: db_estado = PREPARA_JOGO;
+        ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
+        PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
+        PREPARA_NOITE: db_estado = PREPARA_NOITE;
+        default:     db_estado = 5'b11111; //erro
+    endcase
 end
 
 always @* begin
