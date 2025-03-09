@@ -36,8 +36,10 @@ always@(posedge clock) begin
         RESETA_TUDO: Eprox = PREPARA_JOGO;
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
-        PREPARA_JOGO_2: Eprox = PREPARA_NOITE; 
+        PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
+        PREPARA_NOITE: Eprox = PREPARA_NOITE;
 
+        default: Eprox = INICIAL; 
     endcase
 end
 

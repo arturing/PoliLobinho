@@ -6,6 +6,8 @@ module PoliLobinho(
 	input passa,
 	
 	output [4:0] db_estado,
+    output [4:0] db_seed,
+
     output [9:0] jogo_atual
 );
 
@@ -21,7 +23,8 @@ fluxo_dados FD(
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
 	.rst_global(rst_global),
-    .jogo_atual(jogo_atual)
+    .jogo_atual(jogo_atual),
+    .db_seed(db_seed)
 
 );
 
@@ -76,8 +79,10 @@ always@(posedge clock) begin
         RESETA_TUDO: Eprox = PREPARA_JOGO;
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
-        PREPARA_JOGO_2: Eprox = PREPARA_NOITE; 
+        PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
+        PREPARA_NOITE: Eprox = PREPARA_NOITE;
 
+        default: Eprox = INICIAL; 
     endcase
 end
 
@@ -115,6 +120,7 @@ module fluxo_dados(
     input zera_CS, 
     input rst_global,
 
+    output [4:0] db_seed,
     output [9:0] jogo_atual
 );
 
@@ -154,6 +160,7 @@ registrador_M #(.N(10)) REG_SEED(
 );
 
 assign jogo_atual = jogo;
+assign db_seed = seed_addr;
 
 // Fim Lógica de Seed
 

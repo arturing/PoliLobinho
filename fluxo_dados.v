@@ -6,6 +6,7 @@ module fluxo_dados(
     input zera_CS, 
     input rst_global,
 
+    output [4:0] db_seed,
     output [9:0] jogo_atual
 );
 
@@ -45,6 +46,7 @@ registrador_M #(.N(10)) REG_SEED(
 );
 
 assign jogo_atual = jogo;
+assign db_seed = seed_addr;
 
 // Fim Lógica de Seed
 

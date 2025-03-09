@@ -6,6 +6,8 @@ module PoliLobinho(
 	input passa,
 	
 	output [4:0] db_estado,
+    output [4:0] db_seed,
+
     output [9:0] jogo_atual
 );
 
@@ -21,7 +23,8 @@ fluxo_dados FD(
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
 	.rst_global(rst_global),
-    .jogo_atual(jogo_atual)
+    .jogo_atual(jogo_atual),
+    .db_seed(db_seed)
 
 );
 
