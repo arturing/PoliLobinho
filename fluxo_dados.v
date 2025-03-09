@@ -11,6 +11,7 @@ module fluxo_dados(
     output CJ_fim,
     output [9:0] jogo_atual,
     output [1:0] classe_atual,
+    output [2:0] jogador_atual,
 
     output [4:0] db_seed
 );
@@ -68,6 +69,7 @@ class_parser CLASSE(
 
 assign jogo_atual = jogo;
 assign db_seed = seed_addr;
+assign jogador_atual = jogador;
 
 // Fim Lógica de Seed
 

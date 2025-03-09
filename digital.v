@@ -99,7 +99,7 @@ end
 
 
 // Logica de proximo estado
-always@(posedge clock) begin
+always @* begin
     case(Eatual)
         INICIAL: Eprox = (jogar) ? RESETA_TUDO : INICIAL;
         RESETA_TUDO: Eprox = PREPARA_JOGO;
@@ -122,7 +122,7 @@ always @* begin
 
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
 
-    zera_CJ = (Eatual == PREPARA_NOITE);
+    zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
 
@@ -132,7 +132,18 @@ always @* begin
 end
 
 always @* begin
-	db_estado = Eatual;
+	case (Eatual)
+		INICIAL: db_estado = INICIAL;
+		RESETA_TUDO: db_estado = RESETA_TUDO;
+		PREPARA_JOGO: db_estado = PREPARA_JOGO;
+		ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
+		PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
+		PREPARA_NOITE: db_estado = PREPARA_NOITE;
+        PROXIMO_JOGADOR_NOITE : db_estado = PROXIMO_JOGADOR_NOITE;
+        TURNO_NOITE: db_estado = TURNO_NOITE;
+        FIM_NOITE: db_estado = FIM_NOITE;
+		default:     db_estado = 5'b11111; //erro
+	endcase
 end
 
 
