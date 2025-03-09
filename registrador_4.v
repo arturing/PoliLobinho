@@ -10,7 +10,7 @@
 //     14/12/2023  1.0     Edson Midorikawa  versao inicial
 //------------------------------------------------------------------
 //
-module registrador_M (#parameter N =4) (
+module registrador_M #(parameter N = 4) (
     input        clock,
     input        clear,
     input        enable,

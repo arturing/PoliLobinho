@@ -4,8 +4,10 @@ module fluxo_dados(
 
     input e_seed_reg,
     input zera_CS, 
-    input rst_global
+    input rst_global,
 
+    output [4:0] db_seed,
+    output [9:0] jogo_atual
 );
 
 // Lógica de Seed
@@ -26,7 +28,7 @@ contador_m #(.M(20), .N(5)) CONTA_SEED(
    .zera(zera_CS),
    .conta(inc_seed),
    .Q(seed_addr),
-   .fim(),
+   .fim()
 );
 
 seed_rom SEED_MEM(
@@ -42,6 +44,9 @@ registrador_M #(.N(10)) REG_SEED(
     .D(seed_jogo),
     .Q(jogo)
 );
+
+assign jogo_atual = jogo;
+assign db_seed = seed_addr;
 
 // Fim Lógica de Seed
 

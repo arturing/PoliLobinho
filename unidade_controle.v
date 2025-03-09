@@ -8,7 +8,7 @@ module unidade_controle(
     output reg zera_CS, 
     output reg rst_global,
 
-    output reg db_estado
+    output reg [4:0] db_estado
 );
 
 parameter INICIAL = 5'd0;
@@ -29,17 +29,22 @@ always @(posedge clock or posedge reset) begin
 end
 
 
+// Logica de proximo estado
 always@(posedge clock) begin
     case(Eatual)
         INICIAL: Eprox = (jogar) ? RESETA_TUDO : INICIAL;
         RESETA_TUDO: Eprox = PREPARA_JOGO;
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
-        PREPARA_JOGO_2: Eprox = PREPARA_NOITE; 
+        PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
+        PREPARA_NOITE: Eprox = PREPARA_NOITE;
 
+        default: Eprox = INICIAL; 
     endcase
 end
-  
+
+
+//Logica de saida (maquina Moore)
 always @* begin
     rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
@@ -58,6 +63,17 @@ always @* begin
     endcase
 end
 
+always @* begin
+	case (Eatual)
+		INICIAL: db_estado = INICIAL;
+		RESETA_TUDO: db_estado = RESETA_TUDO;
+		PREPARA_JOGO: db_estado = PREPARA_JOGO;
+		ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
+		PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
+		PREPARA_NOITE: db_estado = PREPARA_NOITE;
+		default:     db_estado = 5'b11111; //erro
+	endcase
+end
 
 
 endmodule

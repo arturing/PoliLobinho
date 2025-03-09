@@ -1,18 +1,42 @@
 module PoliLobinho(
 	input  clock,
-	input [4:0] address,
+	input botao,
+	input reset,
+	input jogar,
+	input passa,
 	
-	output [9:0] data_out
+	output [4:0] db_estado,
+    output [4:0] db_seed,
+
+    output [9:0] jogo_atual
 );
 
-seed_rom rom(
+wire e_seed_reg;
+wire zera_CS;
+wire rst_global;
+
+
+fluxo_dados FD(
 	.clock(clock),
-	.address(address),
-	.data_out(data_out)
+	.botao(botao),
+
+	.e_seed_reg(e_seed_reg),
+	.zera_CS(zera_CS),
+	.rst_global(rst_global),
+    .jogo_atual(jogo_atual),
+    .db_seed(db_seed)
+
 );
 
-fluxo_dados FD();
-
-unidade_controle UC();
+unidade_controle UC(
+	.clock(clock),
+	.reset(reset),
+	.jogar(jogar),
+	.passa(passa),
+	.e_seed_reg(e_seed_reg),
+	.zera_CS(zera_CS),
+	.rst_global(rst_global),
+	.db_estado(db_estado)
+);
 
 endmodule
