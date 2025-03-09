@@ -3,7 +3,6 @@ module unidade_controle(
     input reset,
     input jogar,
     input passa,
-);
 
     output reg e_seed_reg,
     output reg zera_CS, 
