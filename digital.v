@@ -1,5 +1,5 @@
 module PoliLobinho(
-	input  clock,
+	input clock,
 	input botao,
 	input reset,
 	input jogar,
@@ -7,14 +7,22 @@ module PoliLobinho(
 	
 	output [4:0] db_estado,
     output [4:0] db_seed,
+	output [2:0] jogador_atual,
+	output [1:0] classe_atual,
 
     output [9:0] jogo_atual
 );
 
-wire e_seed_reg;
-wire zera_CS;
+wire e_seed_reg, zera_CS;
+wire CJ_fim, zera_CJ, inc_jogador;
 wire rst_global;
 
+edge_detector DETECTA_PASSA(
+    .clock(clock),
+    .reset(rst_global),
+    .sinal(passa),
+    .pulso(pulso_passa)
+);
 
 fluxo_dados FD(
 	.clock(clock),
@@ -23,7 +31,14 @@ fluxo_dados FD(
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
 	.rst_global(rst_global),
+	.zera_CJ(zera_CJ),
+	.inc_jogador(inc_jogador),
+
+	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
+	.classe_atual(classe_atual),
+    .jogador_atual(jogador_atual),
+
     .db_seed(db_seed)
 
 );
@@ -32,10 +47,15 @@ unidade_controle UC(
 	.clock(clock),
 	.reset(reset),
 	.jogar(jogar),
-	.passa(passa),
+	.passa(pulso_passa),
+	.CJ_fim(CJ_fim),
+
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
 	.rst_global(rst_global),
+	.zera_CJ(zera_CJ),
+	.inc_jogador(inc_jogador),
+
 	.db_estado(db_estado)
 );
 
@@ -46,10 +66,13 @@ module unidade_controle(
     input reset,
     input jogar,
     input passa,
+    input CJ_fim,
 
     output reg e_seed_reg,
-    output reg zera_CS, 
+    output reg zera_CS,
     output reg rst_global,
+    output reg zera_CJ,
+    output reg inc_jogador,
 
     output reg [4:0] db_estado
 );
@@ -60,6 +83,9 @@ parameter PREPARA_JOGO = 5'd2;
 parameter ARMAZENA_JOGO = 5'd3;
 parameter PREPARA_JOGO_2 = 5'd4;
 parameter PREPARA_NOITE = 5'd5;
+parameter PROXIMO_JOGADOR_NOITE = 5'd6;
+parameter TURNO_NOITE = 5'd7;
+parameter FIM_NOITE = 5'd8;
 
 reg [4:0] Eatual, Eprox;
 
@@ -80,7 +106,10 @@ always@(posedge clock) begin
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
-        PREPARA_NOITE: Eprox = PREPARA_NOITE;
+        PREPARA_NOITE: Eprox = PROXIMO_JOGADOR_NOITE;
+        PROXIMO_JOGADOR_NOITE : Eprox = TURNO_NOITE;
+        TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
+        FIM_NOITE: Eprox = FIM_NOITE;
 
         default: Eprox = INICIAL; 
     endcase
@@ -93,19 +122,17 @@ always @* begin
 
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
 
+    zera_CJ = (Eatual == PREPARA_NOITE);
+
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
+
+    inc_jogador = (Eatual == PROXIMO_JOGADOR_NOITE);
+
+
 end
 
 always @* begin
-	case (Eatual)
-		INICIAL: db_estado = INICIAL;
-		RESETA_TUDO: db_estado = RESETA_TUDO;
-		PREPARA_JOGO: db_estado = PREPARA_JOGO;
-		ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
-		PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
-		PREPARA_NOITE: db_estado = PREPARA_NOITE;
-		default:     db_estado = 5'b11111; //erro
-	endcase
+	db_estado = Eatual;
 end
 
 
@@ -119,9 +146,15 @@ module fluxo_dados(
     input e_seed_reg,
     input zera_CS, 
     input rst_global,
+    input zera_CJ,
+    input inc_jogador,
 
-    output [4:0] db_seed,
-    output [9:0] jogo_atual
+    output CJ_fim,
+    output [9:0] jogo_atual,
+    output [1:0] classe_atual,
+    output [2:0] jogador_atual,
+
+    output [4:0] db_seed
 );
 
 // Lógica de Seed
@@ -129,6 +162,7 @@ module fluxo_dados(
 wire [9:0] seed_jogo, jogo;
 wire [4:0] seed_addr;
 wire inc_seed;
+wire [2:0] jogador;
 
 edge_detector DETECTA_SEED(
     .clock(clock),
@@ -159,8 +193,24 @@ registrador_M #(.N(10)) REG_SEED(
     .Q(jogo)
 );
 
+contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
+   .clock(clock),
+   .zera(zera_CJ),
+   .conta(inc_jogador),
+   .Q(jogador),
+   .fim(CJ_fim)
+);
+
+class_parser CLASSE(
+    .clock(clock),
+    .jogador(jogador),
+    .jogo(jogo),
+    .class(classe_atual)
+);
+
 assign jogo_atual = jogo;
 assign db_seed = seed_addr;
+assign jogador_atual = jogador;
 
 // Fim Lógica de Seed
 
@@ -186,6 +236,26 @@ endmodule
  *      26/01/2024  1.0     Edson Midorikawa  versao inicial
  * ------------------------------------------------------------------------
  */
+
+ module class_parser(
+    input clock,
+    input [2:0] jogador,
+    input [9:0] jogo,
+    output reg [1:0] class
+);
+
+always@(posedge clock) begin
+    case(jogador)
+        3'd0: class = jogo[9:8];
+        3'd1: class = jogo[7:6]; 
+        3'd2: class = jogo[5:4];
+        3'd3: class = jogo[3:2]; 
+        3'd4: class = jogo[1:0]; 
+        default: class = 2'b11;  //Erro
+    endcase
+end
+
+endmodule
  
 module edge_detector (
     input  clock,

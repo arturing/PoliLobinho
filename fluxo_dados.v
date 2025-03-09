@@ -5,9 +5,14 @@ module fluxo_dados(
     input e_seed_reg,
     input zera_CS, 
     input rst_global,
+    input zera_CJ,
+    input inc_jogador,
 
-    output [4:0] db_seed,
-    output [9:0] jogo_atual
+    output CJ_fim,
+    output [9:0] jogo_atual,
+    output [1:0] classe_atual,
+
+    output [4:0] db_seed
 );
 
 // Lógica de Seed
@@ -15,6 +20,7 @@ module fluxo_dados(
 wire [9:0] seed_jogo, jogo;
 wire [4:0] seed_addr;
 wire inc_seed;
+wire [2:0] jogador;
 
 edge_detector DETECTA_SEED(
     .clock(clock),
@@ -43,6 +49,21 @@ registrador_M #(.N(10)) REG_SEED(
     .enable(e_seed_reg),
     .D(seed_jogo),
     .Q(jogo)
+);
+
+contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
+   .clock(clock),
+   .zera(zera_CJ),
+   .conta(inc_jogador),
+   .Q(jogador),
+   .fim(CJ_fim)
+);
+
+class_parser CLASSE(
+    .clock(clock),
+    .jogador(jogador),
+    .jogo(jogo),
+    .class(classe_atual)
 );
 
 assign jogo_atual = jogo;
