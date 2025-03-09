@@ -23,20 +23,21 @@ module contador_m #(parameter M=100, N=7)
    input  wire          zera,
    input  wire          conta,
    output reg  [N-1:0]  Q,
-   output reg           fim,
+   output reg           fim
   );
 
   always @(posedge clock or posedge zera) begin
     if (zera) begin
       Q <= 0;
-    end else begin
-      end else if (conta) begin
+    end else if (clock) begin
+	 if (conta) begin
         if (Q == M-1) begin
           Q <= 0;
         end else begin
           Q <= Q + 1'b1;
         end
-    end
+		end
+	 end
   end
 
   // Saidas

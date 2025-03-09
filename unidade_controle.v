@@ -23,12 +23,13 @@ reg [4:0] Eatual, Eprox;
 // Memoria de estado
 always @(posedge clock or posedge reset) begin
     if (reset)
-        Eatual <= inicial;
+        Eatual <= INICIAL;
     else
         Eatual <= Eprox;
 end
 
 
+// Logica de proximo estado
 always@(posedge clock) begin
     case(Eatual)
         INICIAL: Eprox = (jogar) ? RESETA_TUDO : INICIAL;
@@ -39,7 +40,9 @@ always@(posedge clock) begin
 
     endcase
 end
-  
+
+
+//Logica de saida (maquina Moore)
 always @* begin
     rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
@@ -48,15 +51,17 @@ always @* begin
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
 end
 
-        case (Eatual)
-            INICIAL: db_estado = INICIAL;
-            RESETA_TUDO: db_estado = RESETA_TUDO;
-            PREPARA_JOGO: db_estado = PREPARA_JOGO;
-            ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
-            PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
-            PREPARA_NOITE: db_estado = PREPARA_NOITE;
-            default:     db_estado = 5'b11111; //erro
-        endcase
+always @* begin
+	case (Eatual)
+		INICIAL: db_estado = INICIAL;
+		RESETA_TUDO: db_estado = RESETA_TUDO;
+		PREPARA_JOGO: db_estado = PREPARA_JOGO;
+		ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
+		PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
+		PREPARA_NOITE: db_estado = PREPARA_NOITE;
+		default:     db_estado = 5'b11111; //erro
+	endcase
+end
 
 
 endmodule
