@@ -106,7 +106,7 @@ always@(posedge clock) begin
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
-        PREPARA_NOITE: Eprox = PROXIMO_JOGADOR_NOITE;
+        PREPARA_NOITE: Eprox = TURNO_NOITE;
         PROXIMO_JOGADOR_NOITE : Eprox = TURNO_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
         FIM_NOITE: Eprox = FIM_NOITE;
