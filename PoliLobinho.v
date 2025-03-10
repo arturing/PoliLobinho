@@ -10,12 +10,20 @@ module PoliLobinho(
 	output [2:0] jogador_atual,
 	output [1:0] classe_atual,
 
-    output [9:0] jogo_atual
+    output [9:0] jogo_atual,
+	 output [6:0] db_classe_atual,
+	 output [6:0] db_jogador_atual,
+	 output [6:0] db_estado_7b,
+	 output [6:0] db_seed_7b,
+	 output db_clock
+	 
 );
 
 wire e_seed_reg, zera_CS;
 wire CJ_fim, zera_CJ, inc_jogador;
 wire rst_global;
+
+assign db_clock = clock;
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
@@ -58,5 +66,31 @@ unidade_controle UC(
 
 	.db_estado(db_estado)
 );
+
+hexa7seg disp0 (
+	.hexa({2'b0,classe_atual}),
+	.display(db_classe_atual)
+
+);
+
+hexa7seg disp1 (
+	.hexa({1'b0,jogador_atual}),
+	.display(db_jogador_atual)
+
+);
+
+estado7seg disp3 (
+	.estado(db_seed),
+	.display(db_seed_7b)
+
+);
+
+estado7seg disp5 (
+	.estado(db_estado),
+	.display(db_estado_7b)
+
+);
+
+
 
 endmodule
