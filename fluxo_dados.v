@@ -1,12 +1,14 @@
 module fluxo_dados(
     input clock,
-    input botao,
+//    input botao,
 
     input e_seed_reg,
     input zera_CS, 
     input rst_global,
     input zera_CJ,
     input inc_jogador,
+	 input mostra_classe,
+	 input inc_seed,
 
     output CJ_fim,
     output [9:0] jogo_atual,
@@ -20,15 +22,15 @@ module fluxo_dados(
 
 wire [9:0] seed_jogo, jogo;
 wire [4:0] seed_addr;
-wire inc_seed;
 wire [2:0] jogador;
+wire [1:0] w_classe_atual;
 
-edge_detector DETECTA_SEED(
-    .clock(clock),
-    .reset(rst_global),
-    .sinal(botao),
-    .pulso(inc_seed)
-);
+//edge_detector DETECTA_SEED(
+//    .clock(clock),
+//    .reset(rst_global),
+//    .sinal(botao),
+//    .pulso(toggle)
+//);
 
 contador_m #(.M(20), .N(5)) CONTA_SEED(
    .clock(clock),
@@ -64,8 +66,10 @@ class_parser CLASSE(
     .clock(clock),
     .jogador(jogador),
     .jogo(jogo),
-    .class(classe_atual)
+    .class(w_classe_atual)
 );
+
+assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 
 assign jogo_atual = jogo;
 assign db_seed = seed_addr;

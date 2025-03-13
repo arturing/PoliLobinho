@@ -1,5 +1,9 @@
 *.bak
 *.qws
+*.qarlog
+*.rpt
+*.qdf
+qar_info.json
 incremental_db/
 output_files/
 db/

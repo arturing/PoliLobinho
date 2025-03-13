@@ -10,6 +10,8 @@ module unidade_controle(
     output reg rst_global,
     output reg zera_CJ,
     output reg inc_jogador,
+	 output reg inc_seed,
+	 output reg mostra_classe,
 
     output reg [4:0] db_estado
 );
@@ -23,6 +25,7 @@ parameter PREPARA_NOITE = 5'd5;
 parameter PROXIMO_JOGADOR_NOITE = 5'd6;
 parameter TURNO_NOITE = 5'd7;
 parameter FIM_NOITE = 5'd8;
+parameter DELAY_NOITE = 5'd9;
 
 reg [4:0] Eatual, Eprox;
 
@@ -44,7 +47,8 @@ always @* begin
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
         PREPARA_NOITE: Eprox = TURNO_NOITE;
-        PROXIMO_JOGADOR_NOITE : Eprox = TURNO_NOITE;
+        PROXIMO_JOGADOR_NOITE : Eprox = DELAY_NOITE;
+		  DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
         FIM_NOITE: Eprox = FIM_NOITE;
 
@@ -58,8 +62,12 @@ always @* begin
     rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
+	 
+	 mostra_classe = (Eatual == TURNO_NOITE);
 
     zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
+	 
+	 inc_seed = (Eatual == PREPARA_JOGO);
 
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
 
@@ -79,6 +87,7 @@ always @* begin
         PROXIMO_JOGADOR_NOITE : db_estado = PROXIMO_JOGADOR_NOITE;
         TURNO_NOITE: db_estado = TURNO_NOITE;
         FIM_NOITE: db_estado = FIM_NOITE;
+		  DELAY_NOITE: db_estado = DELAY_NOITE;
 		default:     db_estado = 5'b11111; //erro
 	endcase
 end
