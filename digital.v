@@ -1,6 +1,6 @@
 module PoliLobinho(
 	input clock,
-	input botao,
+	input [4:0] botoes_jogadores,
 	input reset,
 	input jogar,
 	input passa,
@@ -11,6 +11,9 @@ module PoliLobinho(
 	 output [6:0] db_jogador_atual,
 	 output [6:0] db_estado_7b,
 	 output [6:0] db_seed_7b,
+	 output [6:0] db_atacado_7b,
+	 output [6:0] db_protegido_7b,
+	 output [2:0] db_jogador_escolhido,
 	 output db_clock
 );
 
@@ -19,26 +22,37 @@ wire CJ_fim, zera_CJ, inc_jogador;
 wire [4:0] db_estado;
 wire [4:0] db_seed;
 wire [2:0] jogador_atual;
+wire [2:0] jogador_escolhido;
 wire [1:0] classe_atual;
 wire [9:0] jogo_atual;
-wire w_botao;
+wire processar_acao;
+wire [4:0] w_botoes_jogadores;
 wire w_reset;
 wire w_jogar;
 wire w_passa;
 wire w_mostra_classe;
 wire w_inc_seed;
+wire [2:0] atacado;
+wire [2:0] protegido;
 
 assign db_clock = clock;
-assign w_botao = !botao;
+assign w_botoes_jogadores = ~botoes_jogadores;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
+assign db_jogador_escolhido = jogador_escolhido;
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
     .reset(rst_global),
     .sinal(w_passa),
     .pulso(pulso_passa)
+);
+
+regJogadorConvertor CONVERTE_JOGADOR(
+	.clock(clock),
+	.botoes_jogadores(w_botoes_jogadores),
+	.jogador_escolhido(jogador_escolhido)
 );
 
 fluxo_dados FD(
@@ -56,7 +70,11 @@ fluxo_dados FD(
     .jogo_atual(jogo_atual),
 	.classe_atual(classe_atual),
     .jogador_atual(jogador_atual),
-	 .mostra_classe(w_mostra_classe),
+	.mostra_classe(w_mostra_classe),
+	.processar_acao(processar_acao),
+	.jogador_escolhido(jogador_escolhido),
+	.db_atacado(atacado),
+	.db_protegido(protegido),
 
     .db_seed(db_seed)
 
@@ -76,6 +94,7 @@ unidade_controle UC(
 	.inc_jogador(inc_jogador),
 	.mostra_classe(w_mostra_classe),
 	.inc_seed(w_inc_seed),
+	.processar_acao(processar_acao),
 
 	.db_estado(db_estado)
 );
@@ -92,7 +111,19 @@ hexa7seg disp1 (
 
 );
 
-estado7seg disp3 (
+hexa7seg disp2 (
+	.hexa({1'b0,atacado}),
+	.display(db_atacado_7b)
+
+);
+
+hexa7seg disp3 (
+	.hexa({1'b0,protegido}),
+	.display(db_protegido_7b)
+
+);
+
+estado7seg disp4 (
 	.estado(db_seed),
 	.display(db_seed_7b)
 
@@ -103,8 +134,6 @@ estado7seg disp5 (
 	.display(db_estado_7b)
 
 );
-
-
 
 endmodule
 module class_parser(
@@ -174,7 +203,6 @@ module contador_m #(parameter M=100, N=7)
       else            fim = 0;
 
 endmodule
-
 /* ------------------------------------------------------------------------
  *  Arquivo   : edge_detector.v
  *  Projeto   : Experiencia 4 - Desenvolvimento de Projeto de
@@ -218,7 +246,6 @@ module edge_detector (
     assign pulso = ~reg1 & reg0;
 
 endmodule
-
 /*--------------------------------------------------------------
  * Arquivo   : estado7seg.v
  * Projeto   : Jogo do Desafio da Memoria
@@ -230,7 +257,7 @@ endmodule
  * saida: display - codigo de 7 bits para display de 7 segmentos
  * ----------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. display(6) -> HEX0[6] ou HEX06
  * ----------------------------------------------------------------
  * Revisoes  :
@@ -287,7 +314,6 @@ end
 endmodule
 
 
-
 module fluxo_dados(
     input clock,
 //    input botao,
@@ -297,23 +323,31 @@ module fluxo_dados(
     input rst_global,
     input zera_CJ,
     input inc_jogador,
-	 input mostra_classe,
-	 input inc_seed,
+    input mostra_classe,
+    input processar_acao,
+    input inc_seed,
+    input [2:0] jogador_escolhido,
 
     output CJ_fim,
     output [9:0] jogo_atual,
     output [1:0] classe_atual,
     output [2:0] jogador_atual,
 
+    output [2:0] db_atacado,
+    output [2:0] db_protegido,
+
     output [4:0] db_seed
 );
 
-// Lógica de Seed
+// L??gica de Seed
 
 wire [9:0] seed_jogo, jogo;
 wire [4:0] seed_addr;
 wire [2:0] jogador;
 wire [1:0] w_classe_atual;
+reg  [4:0] mortes = 5'b00000;
+reg  [2:0] protegido = 3'b000;
+reg  [2:0] tentativa_eliminar = 3'b000;
 
 //edge_detector DETECTA_SEED(
 //    .clock(clock),
@@ -359,13 +393,26 @@ class_parser CLASSE(
     .class(w_classe_atual)
 );
 
+always@(posedge clock) begin
+    if (processar_acao) begin
+        case(w_classe_atual)
+            2'b00 : ;//Fazer nada
+            2'b01 : tentativa_eliminar <= jogador_escolhido;
+            2'b10 : protegido <= jogador_escolhido;
+            default: ;//Fazer nada
+        endcase
+    end
+end
+
 assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 
 assign jogo_atual = jogo;
 assign db_seed = seed_addr;
 assign jogador_atual = jogador;
+assign db_protegido = protegido;
+assign db_atacado = tentativa_eliminar;
 
-// Fim Lógica de Seed
+// Fim L??gica de Seed
 
 
 endmodule
@@ -382,7 +429,7 @@ endmodule
  * baseado no componente bcd7seg.v da Intel FPGA
  *--------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. sseg(6) -> HEX0[6] ou HEX06
  *--------------------------------------------------------------
  * Revisoes  :
@@ -429,7 +476,6 @@ module hexa7seg (hexa, display);
         default: display = 7'b1111111;
     endcase
 endmodule
-
 //------------------------------------------------------------------
 // Arquivo   : registrador_4.v
 // Projeto   : Experiencia 3 - Projeto de uma Unidade de Controle 
@@ -462,10 +508,37 @@ module registrador_M #(parameter N = 4) (
     assign Q = IQ;
 
 endmodule
+module regJogadorConvertor (
+    input clock,
+    input [4:0] botoes_jogadores,
+    
+    output reg [2:0] jogador_escolhido
+);
+
+wire w_OR_botoes;
+
+assign w_OR_botoes = |botoes_jogadores;
+
+always @(posedge clock) begin
+    if (w_OR_botoes) begin
+        case(botoes_jogadores)
+            5'b00001 : jogador_escolhido = 3'b000; //jogador 0
+            5'b00010 : jogador_escolhido = 3'b001; //jogador 1
+            5'b00100 : jogador_escolhido = 3'b010; //jogador 2
+            5'b01000 : jogador_escolhido = 3'b011; //jogador 3
+            5'b10000 : jogador_escolhido = 3'b100; //jogador 4
+            default  : jogador_escolhido = 3'b000; //catch-all
+        endcase
+    end
+
+end
+
+
+endmodule
 /*
-00 -> Aldeão
+00 -> Alde??o
 01 -> Lobo
-10 -> Médico
+10 -> M??dico
 */
 
 module seed_rom(
@@ -476,26 +549,26 @@ module seed_rom(
 
 always@(posedge clock) begin
     case(address)
-        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 é o lobo, Jogador 1 é o médico
-        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 é o lobo, Jogador 2 é o médico
-        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 é o lobo, Jogador 3 é o médico
-        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 é o lobo, Jogador 4 é o médico
-        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 é o lobo, Jogador 0 é o médico
-        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 é o lobo, Jogador 2 é o médico
-        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 é o lobo, Jogador 3 é o médico
-        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 é o lobo, Jogador 4 é o médico
-        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 é o lobo, Jogador 0 é o médico
-        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 é o lobo, Jogador 1 é o médico
-        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 é o lobo, Jogador 3 é o médico
-        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 é o lobo, Jogador 4 é o médico
-        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 é o lobo, Jogador 0 é o médico
-        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 é o lobo, Jogador 1 é o médico
-        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 é o lobo, Jogador 2 é o médico
-        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 é o lobo, Jogador 4 é o médico
-        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 é o lobo, Jogador 0 é o médico
-        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 é o lobo, Jogador 1 é o médico
-        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 é o lobo, Jogador 2 é o médico
-        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 é o lobo, Jogador 3 é o médico
+        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 ?? o lobo, Jogador 3 ?? o m??dico
         default: data_out = 10'b01_10_00_00_00;
     endcase
 end
@@ -513,8 +586,9 @@ module unidade_controle(
     output reg rst_global,
     output reg zera_CJ,
     output reg inc_jogador,
-	 output reg inc_seed,
-	 output reg mostra_classe,
+	output reg inc_seed,
+	output reg mostra_classe,
+    output reg processar_acao,
 
     output reg [4:0] db_estado
 );
@@ -549,9 +623,9 @@ always @* begin
         PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
-        PREPARA_NOITE: Eprox = TURNO_NOITE;
+        PREPARA_NOITE: Eprox = DELAY_NOITE;
         PROXIMO_JOGADOR_NOITE : Eprox = DELAY_NOITE;
-		  DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
+		DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
         FIM_NOITE: Eprox = FIM_NOITE;
 
@@ -566,11 +640,13 @@ always @* begin
 
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
 	 
-	 mostra_classe = (Eatual == TURNO_NOITE);
+	mostra_classe = (Eatual == TURNO_NOITE);
+
+    processar_acao = (Eatual == TURNO_NOITE);
 
     zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 	 
-	 inc_seed = (Eatual == PREPARA_JOGO);
+	inc_seed = (Eatual == PREPARA_JOGO);
 
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
 

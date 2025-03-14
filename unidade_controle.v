@@ -10,8 +10,9 @@ module unidade_controle(
     output reg rst_global,
     output reg zera_CJ,
     output reg inc_jogador,
-	 output reg inc_seed,
-	 output reg mostra_classe,
+	output reg inc_seed,
+	output reg mostra_classe,
+    output reg processar_acao,
 
     output reg [4:0] db_estado
 );
@@ -63,11 +64,13 @@ always @* begin
 
     zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
 	 
-	 mostra_classe = (Eatual == TURNO_NOITE);
+	mostra_classe = (Eatual == TURNO_NOITE);
+
+    processar_acao = (Eatual == TURNO_NOITE);
 
     zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 	 
-	 inc_seed = (Eatual == PREPARA_JOGO);
+	inc_seed = (Eatual == PREPARA_JOGO);
 
     e_seed_reg = (Eatual == ARMAZENA_JOGO);
 
