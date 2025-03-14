@@ -3,6 +3,7 @@
 *.qarlog
 *.rpt
 *.qdf
+*.rpt
 qar_info.json
 incremental_db/
 output_files/
