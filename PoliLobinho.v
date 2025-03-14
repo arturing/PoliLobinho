@@ -25,7 +25,7 @@ wire w_botao;
 wire w_reset;
 wire w_jogar;
 wire w_passa;
-wire [1:0] W_mostra_classe;
+wire w_mostra_classe;
 wire w_inc_seed;
 
 assign db_clock = clock;
@@ -56,7 +56,7 @@ fluxo_dados FD(
     .jogo_atual(jogo_atual),
 	.classe_atual(classe_atual),
     .jogador_atual(jogador_atual),
-	 .mostra_classe(W_mostra_classe),
+	 .mostra_classe(w_mostra_classe),
 
     .db_seed(db_seed)
 
@@ -74,7 +74,7 @@ unidade_controle UC(
 	.rst_global(rst_global),
 	.zera_CJ(zera_CJ),
 	.inc_jogador(inc_jogador),
-	.mostra_classe(W_mostra_classe),
+	.mostra_classe(w_mostra_classe),
 	.inc_seed(w_inc_seed),
 
 	.db_estado(db_estado)
