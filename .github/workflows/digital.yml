@@ -1,0 +1,24 @@
+name: Gerar digital.v
+
+on: push
+
+jobs:
+  generate-digital-v:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      # Runs a set of commands using the runners shell
+      - name: Rodar digital.sh
+        run: bash digital.sh
+
+      # Commit all changed files back to the repository
+      - uses: stefanzweifel/git-auto-commit-action@v5
