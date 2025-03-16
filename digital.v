@@ -422,13 +422,10 @@ always@(posedge clock) begin
 end
 
 always@(posedge clock) begin
-    if (avaliar_eliminacao) begin
+	 if (rst_global) mortes <= 5'b00000;
+    else if (avaliar_eliminacao) begin
         if (atacado != protegido) mortes[atacado] <= 1;
     end
-end
-
-always@(posedge clock) begin
-    if (rst_global) mortes <= 5'b00000;
 end
 
 assign jogador_vivo = !mortes[jogador];
@@ -519,8 +516,9 @@ wire w_OR_botoes;
 
 assign w_OR_botoes = |botoes_jogadores;
 
-always @(posedge clock) begin
-    if (w_OR_botoes) begin
+always @(posedge clock or posedge reset) begin
+	 if (reset) jogador_escolhido = 3'b000;
+    else if (w_OR_botoes) begin
         case(botoes_jogadores)
             5'b00001 : jogador_escolhido = 3'b000; //jogador 0
             5'b00010 : jogador_escolhido = 3'b001; //jogador 1
@@ -530,10 +528,6 @@ always @(posedge clock) begin
             default  : jogador_escolhido = 3'b000; //catch-all
         endcase
     end
-end
-
-always @(posedge clock or posedge reset) begin
-    if (reset) jogador_escolhido = 3'b000;
 end
 
 endmodule
