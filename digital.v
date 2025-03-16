@@ -14,6 +14,7 @@ module PoliLobinho(
 	 output [6:0] db_atacado_7b,
 	 output [6:0] db_protegido_7b,
 	 output [2:0] db_jogador_escolhido,
+	 output [4:0] db_mortes,
 	 output db_clock
 );
 
@@ -34,6 +35,8 @@ wire w_mostra_classe;
 wire w_inc_seed;
 wire [2:0] atacado;
 wire [2:0] protegido;
+wire reset_Convertor;
+wire avaliar_eliminacao;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -51,6 +54,7 @@ edge_detector DETECTA_PASSA(
 
 regJogadorConvertor CONVERTE_JOGADOR(
 	.clock(clock),
+	.reset(reset_Convertor),
 	.botoes_jogadores(w_botoes_jogadores),
 	.jogador_escolhido(jogador_escolhido)
 );
@@ -65,6 +69,7 @@ fluxo_dados FD(
 	.zera_CJ(zera_CJ),
 	.inc_jogador(inc_jogador),
 	.inc_seed(w_inc_seed),
+	.avaliar_eliminacao(avaliar_eliminacao),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -75,6 +80,7 @@ fluxo_dados FD(
 	.jogador_escolhido(jogador_escolhido),
 	.db_atacado(atacado),
 	.db_protegido(protegido),
+	.db_mortes(db_mortes),
 
     .db_seed(db_seed)
 
@@ -95,6 +101,8 @@ unidade_controle UC(
 	.mostra_classe(w_mostra_classe),
 	.inc_seed(w_inc_seed),
 	.processar_acao(processar_acao),
+	.reset_Convertor(reset_Convertor),
+	.avaliar_eliminacao(avaliar_eliminacao),
 
 	.db_estado(db_estado)
 );
@@ -329,6 +337,7 @@ module fluxo_dados(
     input mostra_classe,
     input processar_acao,
     input inc_seed,
+    input avaliar_eliminacao,
     input [2:0] jogador_escolhido,
 
     output CJ_fim,
@@ -338,6 +347,7 @@ module fluxo_dados(
 
     output [2:0] db_atacado,
     output [2:0] db_protegido,
+    output [4:0] db_mortes,
 
     output [4:0] db_seed
 );
@@ -350,7 +360,7 @@ wire [2:0] jogador;
 wire [1:0] w_classe_atual;
 reg  [4:0] mortes = 5'b00000;
 reg  [2:0] protegido = 3'b000;
-reg  [2:0] tentativa_eliminar = 3'b000;
+reg  [2:0] atacado = 3'b000;
 
 //edge_detector DETECTA_SEED(
 //    .clock(clock),
@@ -400,10 +410,16 @@ always@(posedge clock) begin
     if (processar_acao) begin
         case(w_classe_atual)
             2'b00 : ;//Fazer nada
-            2'b01 : tentativa_eliminar <= jogador_escolhido;
+            2'b01 : atacado <= jogador_escolhido;
             2'b10 : protegido <= jogador_escolhido;
             default: ;//Fazer nada
         endcase
+    end
+end
+
+always@(posedge clock) begin
+    if (avaliar_eliminacao) begin
+        if (atacado != protegido) mortes[atacado] <= 1;
     end
 end
 
@@ -413,7 +429,8 @@ assign jogo_atual = jogo;
 assign db_seed = seed_addr;
 assign jogador_atual = jogador;
 assign db_protegido = protegido;
-assign db_atacado = tentativa_eliminar;
+assign db_atacado = atacado;
+assign db_mortes = mortes;
 
 // Fim Lógica de Seed
 
@@ -483,6 +500,7 @@ endmodule
 module regJogadorConvertor (
     input clock,
     input [4:0] botoes_jogadores,
+    input reset,
     
     output reg [2:0] jogador_escolhido
 );
@@ -502,9 +520,11 @@ always @(posedge clock) begin
             default  : jogador_escolhido = 3'b000; //catch-all
         endcase
     end
-
 end
 
+always @(posedge clock or posedge reset) begin
+    if (reset) jogador_escolhido = 3'b000;
+end
 
 endmodule
 //------------------------------------------------------------------
@@ -593,6 +613,8 @@ module unidade_controle(
 	output reg inc_seed,
 	output reg mostra_classe,
     output reg processar_acao,
+    output reg reset_Convertor,
+    output reg avaliar_eliminacao,
 
     output reg [4:0] db_estado
 );
@@ -607,6 +629,8 @@ parameter PROXIMO_JOGADOR_NOITE = 5'd6;
 parameter TURNO_NOITE = 5'd7;
 parameter FIM_NOITE = 5'd8;
 parameter DELAY_NOITE = 5'd9;
+parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
+parameter ANUNCIAR_MORTE = 5'd11;
 
 reg [4:0] Eatual, Eprox;
 
@@ -631,7 +655,9 @@ always @* begin
         PROXIMO_JOGADOR_NOITE : Eprox = DELAY_NOITE;
 		DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
-        FIM_NOITE: Eprox = FIM_NOITE;
+        FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
+        AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
+        ANUNCIAR_MORTE: Eprox = ANUNCIAR_MORTE;
 
         default: Eprox = INICIAL; 
     endcase
@@ -649,6 +675,10 @@ always @* begin
     processar_acao = (Eatual == TURNO_NOITE);
 
     zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
+
+    reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
+
+    avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
 	 
 	inc_seed = (Eatual == PREPARA_JOGO);
 
@@ -670,7 +700,9 @@ always @* begin
         PROXIMO_JOGADOR_NOITE : db_estado = PROXIMO_JOGADOR_NOITE;
         TURNO_NOITE: db_estado = TURNO_NOITE;
         FIM_NOITE: db_estado = FIM_NOITE;
-		  DELAY_NOITE: db_estado = DELAY_NOITE;
+		DELAY_NOITE: db_estado = DELAY_NOITE;
+        AVALIAR_ELIMINACAO_NOITE: db_estado = AVALIAR_ELIMINACAO_NOITE;
+        ANUNCIAR_MORTE: db_estado = ANUNCIAR_MORTE;
 		default:     db_estado = 5'b11111; //erro
 	endcase
 end
