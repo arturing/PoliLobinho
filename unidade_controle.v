@@ -4,6 +4,7 @@ module unidade_controle(
     input jogar,
     input passa,
     input CJ_fim,
+    input jogador_vivo,
 
     output reg e_seed_reg,
     output reg zera_CS,
@@ -31,6 +32,7 @@ parameter FIM_NOITE = 5'd8;
 parameter DELAY_NOITE = 5'd9;
 parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
 parameter ANUNCIAR_MORTE = 5'd11;
+parameter CHECAR_VIVO = 5'd12;
 
 reg [4:0] Eatual, Eprox;
 
@@ -52,12 +54,13 @@ always @* begin
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
         PREPARA_NOITE: Eprox = DELAY_NOITE;
-        PROXIMO_JOGADOR_NOITE : Eprox = DELAY_NOITE;
+        PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
+        CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : PROXIMO_JOGADOR_NOITE;
 		DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
         FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
         AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
-        ANUNCIAR_MORTE: Eprox = ANUNCIAR_MORTE;
+        ANUNCIAR_MORTE: Eprox = (passa) ? PREPARA_NOITE : ANUNCIAR_MORTE;
 
         default: Eprox = INICIAL; 
     endcase

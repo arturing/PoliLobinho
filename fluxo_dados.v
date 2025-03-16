@@ -21,6 +21,7 @@ module fluxo_dados(
     output [2:0] db_atacado,
     output [2:0] db_protegido,
     output [4:0] db_mortes,
+    output jogador_vivo,
 
     output [4:0] db_seed
 );
@@ -95,6 +96,12 @@ always@(posedge clock) begin
         if (atacado != protegido) mortes[atacado] <= 1;
     end
 end
+
+always@(posedge clock) begin
+    if (rst_global) mortes <= 5'b00000;
+end
+
+assign jogador_vivo = !mortes[jogador];
 
 assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 

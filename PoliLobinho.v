@@ -37,6 +37,7 @@ wire [2:0] atacado;
 wire [2:0] protegido;
 wire reset_Convertor;
 wire avaliar_eliminacao;
+wire jogador_vivo;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -81,6 +82,7 @@ fluxo_dados FD(
 	.db_atacado(atacado),
 	.db_protegido(protegido),
 	.db_mortes(db_mortes),
+	.jogador_vivo(jogador_vivo),
 
     .db_seed(db_seed)
 
@@ -92,6 +94,7 @@ unidade_controle UC(
 	.jogar(w_jogar),
 	.passa(pulso_passa),
 	.CJ_fim(CJ_fim),
+	.jogador_vivo(jogador_vivo),
 
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
