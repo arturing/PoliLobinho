@@ -14,6 +14,7 @@ module PoliLobinho(
 	 output [6:0] db_atacado_7b,
 	 output [6:0] db_protegido_7b,
 	 output [2:0] db_jogador_escolhido,
+	 output [4:0] db_mortes,
 	 output db_clock
 );
 
@@ -35,6 +36,7 @@ wire w_inc_seed;
 wire [2:0] atacado;
 wire [2:0] protegido;
 wire reset_Convertor;
+wire avaliar_eliminacao;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -67,6 +69,7 @@ fluxo_dados FD(
 	.zera_CJ(zera_CJ),
 	.inc_jogador(inc_jogador),
 	.inc_seed(w_inc_seed),
+	.avaliar_eliminacao(avaliar_eliminacao),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -77,6 +80,7 @@ fluxo_dados FD(
 	.jogador_escolhido(jogador_escolhido),
 	.db_atacado(atacado),
 	.db_protegido(protegido),
+	.db_mortes(db_mortes),
 
     .db_seed(db_seed)
 
@@ -98,6 +102,7 @@ unidade_controle UC(
 	.inc_seed(w_inc_seed),
 	.processar_acao(processar_acao),
 	.reset_Convertor(reset_Convertor),
+	.avaliar_eliminacao(avaliar_eliminacao),
 
 	.db_estado(db_estado)
 );

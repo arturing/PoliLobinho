@@ -10,6 +10,7 @@ module fluxo_dados(
     input mostra_classe,
     input processar_acao,
     input inc_seed,
+    input avaliar_eliminacao,
     input [2:0] jogador_escolhido,
 
     output CJ_fim,
@@ -19,6 +20,7 @@ module fluxo_dados(
 
     output [2:0] db_atacado,
     output [2:0] db_protegido,
+    output [4:0] db_mortes,
 
     output [4:0] db_seed
 );
@@ -31,7 +33,7 @@ wire [2:0] jogador;
 wire [1:0] w_classe_atual;
 reg  [4:0] mortes = 5'b00000;
 reg  [2:0] protegido = 3'b000;
-reg  [2:0] tentativa_eliminar = 3'b000;
+reg  [2:0] atacado = 3'b000;
 
 //edge_detector DETECTA_SEED(
 //    .clock(clock),
@@ -81,10 +83,16 @@ always@(posedge clock) begin
     if (processar_acao) begin
         case(w_classe_atual)
             2'b00 : ;//Fazer nada
-            2'b01 : tentativa_eliminar <= jogador_escolhido;
+            2'b01 : atacado <= jogador_escolhido;
             2'b10 : protegido <= jogador_escolhido;
             default: ;//Fazer nada
         endcase
+    end
+end
+
+always@(posedge clock) begin
+    if (avaliar_eliminacao) begin
+        if (atacado != protegido) mortes[atacado] <= 1;
     end
 end
 
@@ -94,7 +102,8 @@ assign jogo_atual = jogo;
 assign db_seed = seed_addr;
 assign jogador_atual = jogador;
 assign db_protegido = protegido;
-assign db_atacado = tentativa_eliminar;
+assign db_atacado = atacado;
+assign db_mortes = mortes;
 
 // Fim Lógica de Seed
 
