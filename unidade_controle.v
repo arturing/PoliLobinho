@@ -13,6 +13,7 @@ module unidade_controle(
 	output reg inc_seed,
 	output reg mostra_classe,
     output reg processar_acao,
+    output reg reset_Convertor,
 
     output reg [4:0] db_estado
 );
@@ -69,6 +70,8 @@ always @* begin
     processar_acao = (Eatual == TURNO_NOITE);
 
     zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
+
+    reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
 	 
 	inc_seed = (Eatual == PREPARA_JOGO);
 

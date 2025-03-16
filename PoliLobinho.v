@@ -34,6 +34,7 @@ wire w_mostra_classe;
 wire w_inc_seed;
 wire [2:0] atacado;
 wire [2:0] protegido;
+wire reset_Convertor;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -51,6 +52,7 @@ edge_detector DETECTA_PASSA(
 
 regJogadorConvertor CONVERTE_JOGADOR(
 	.clock(clock),
+	.reset(reset_Convertor),
 	.botoes_jogadores(w_botoes_jogadores),
 	.jogador_escolhido(jogador_escolhido)
 );
@@ -95,6 +97,7 @@ unidade_controle UC(
 	.mostra_classe(w_mostra_classe),
 	.inc_seed(w_inc_seed),
 	.processar_acao(processar_acao),
+	.reset_Convertor(reset_Convertor),
 
 	.db_estado(db_estado)
 );

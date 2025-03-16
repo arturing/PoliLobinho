@@ -1,6 +1,7 @@
 module regJogadorConvertor (
     input clock,
     input [4:0] botoes_jogadores,
+    input reset,
     
     output reg [2:0] jogador_escolhido
 );
@@ -20,8 +21,10 @@ always @(posedge clock) begin
             default  : jogador_escolhido = 3'b000; //catch-all
         endcase
     end
-
 end
 
+always @(posedge clock or posedge reset) begin
+    if (reset) jogador_escolhido = 3'b000;
+end
 
 endmodule
