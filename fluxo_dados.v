@@ -92,13 +92,10 @@ always@(posedge clock) begin
 end
 
 always@(posedge clock) begin
-    if (avaliar_eliminacao) begin
+	 if (rst_global) mortes <= 5'b00000;
+    else if (avaliar_eliminacao) begin
         if (atacado != protegido) mortes[atacado] <= 1;
     end
-end
-
-always@(posedge clock) begin
-    if (rst_global) mortes <= 5'b00000;
 end
 
 assign jogador_vivo = !mortes[jogador];
