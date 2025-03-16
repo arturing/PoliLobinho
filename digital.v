@@ -37,6 +37,7 @@ wire [2:0] atacado;
 wire [2:0] protegido;
 wire reset_Convertor;
 wire avaliar_eliminacao;
+wire jogador_vivo;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -81,6 +82,7 @@ fluxo_dados FD(
 	.db_atacado(atacado),
 	.db_protegido(protegido),
 	.db_mortes(db_mortes),
+	.jogador_vivo(jogador_vivo),
 
     .db_seed(db_seed)
 
@@ -92,6 +94,7 @@ unidade_controle UC(
 	.jogar(w_jogar),
 	.passa(pulso_passa),
 	.CJ_fim(CJ_fim),
+	.jogador_vivo(jogador_vivo),
 
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
@@ -348,6 +351,7 @@ module fluxo_dados(
     output [2:0] db_atacado,
     output [2:0] db_protegido,
     output [4:0] db_mortes,
+    output jogador_vivo,
 
     output [4:0] db_seed
 );
@@ -422,6 +426,12 @@ always@(posedge clock) begin
         if (atacado != protegido) mortes[atacado] <= 1;
     end
 end
+
+always@(posedge clock) begin
+    if (rst_global) mortes <= 5'b00000;
+end
+
+assign jogador_vivo = !mortes[jogador];
 
 assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 
@@ -604,6 +614,7 @@ module unidade_controle(
     input jogar,
     input passa,
     input CJ_fim,
+    input jogador_vivo,
 
     output reg e_seed_reg,
     output reg zera_CS,
@@ -631,6 +642,7 @@ parameter FIM_NOITE = 5'd8;
 parameter DELAY_NOITE = 5'd9;
 parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
 parameter ANUNCIAR_MORTE = 5'd11;
+parameter CHECAR_VIVO = 5'd12;
 
 reg [4:0] Eatual, Eprox;
 
@@ -652,12 +664,13 @@ always @* begin
         ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
         PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
         PREPARA_NOITE: Eprox = DELAY_NOITE;
-        PROXIMO_JOGADOR_NOITE : Eprox = DELAY_NOITE;
+        PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
+        CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : PROXIMO_JOGADOR_NOITE;
 		DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
         TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
         FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
         AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
-        ANUNCIAR_MORTE: Eprox = ANUNCIAR_MORTE;
+        ANUNCIAR_MORTE: Eprox = (passa) ? PREPARA_NOITE : ANUNCIAR_MORTE;
 
         default: Eprox = INICIAL; 
     endcase
