@@ -15,7 +15,9 @@ module PoliLobinho(
 	 output [6:0] db_protegido_7b,
 	 output [2:0] db_jogador_escolhido,
 	 output [4:0] db_mortes,
-	 output db_clock
+	 output db_clock,
+	 output ganhamo,
+	 output votaram
 );
 
 wire e_seed_reg, zera_CS;
@@ -39,12 +41,19 @@ wire reset_Convertor;
 wire avaliar_eliminacao;
 wire jogador_vivo;
 
+wire w_acertou, w_voto, w_morra, w_votou;
+////////////////////////// mudei aqui
+wire sinal_lobo_ganhou;
+
+
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
 assign db_jogador_escolhido = jogador_escolhido;
+assign ganhamo = w_acertou;
+assign votaram = w_votou;
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
@@ -71,6 +80,8 @@ fluxo_dados FD(
 	.inc_jogador(inc_jogador),
 	.inc_seed(w_inc_seed),
 	.avaliar_eliminacao(avaliar_eliminacao),
+	.voto(w_voto),
+	.morra(w_morra),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -84,7 +95,10 @@ fluxo_dados FD(
 	.db_mortes(db_mortes),
 	.jogador_vivo(jogador_vivo),
 
-    .db_seed(db_seed)
+    .db_seed(db_seed),
+	 .acertou(w_acertou),
+	 .votou(w_votou),
+    .sinal_lobo_ganhou(sinal_lobo_ganhou)
 
 );
 
@@ -95,6 +109,9 @@ unidade_controle UC(
 	.passa(pulso_passa),
 	.CJ_fim(CJ_fim),
 	.jogador_vivo(jogador_vivo),
+	.acertou(w_acertou),
+	.votou(w_votou),
+    .sinal_lobo_ganhou(sinal_lobo_ganhou),
 
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
@@ -107,7 +124,9 @@ unidade_controle UC(
 	.reset_Convertor(reset_Convertor),
 	.avaliar_eliminacao(avaliar_eliminacao),
 
-	.db_estado(db_estado)
+	.db_estado(db_estado),
+	.voto(w_voto),
+	.morra(w_morra)
 );
 
 hexa7seg disp0 (
@@ -214,7 +233,6 @@ module contador_m #(parameter M=100, N=7)
       else            fim = 0;
 
 endmodule
-
 /* ------------------------------------------------------------------------
  *  Arquivo   : edge_detector.v
  *  Projeto   : Experiencia 4 - Desenvolvimento de Projeto de
@@ -258,7 +276,6 @@ module edge_detector (
     assign pulso = ~reg1 & reg0;
 
 endmodule
-
 /*--------------------------------------------------------------
  * Arquivo   : estado7seg.v
  * Projeto   : Jogo do Desafio da Memoria
@@ -270,7 +287,7 @@ endmodule
  * saida: display - codigo de 7 bits para display de 7 segmentos
  * ----------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. display(6) -> HEX0[6] ou HEX06
  * ----------------------------------------------------------------
  * Revisoes  :
@@ -327,119 +344,153 @@ end
 endmodule
 
 
-
 module fluxo_dados(
-    input clock,
-//    input botao,
+        input clock,
+    //    input botao,
 
-    input e_seed_reg,
-    input zera_CS, 
-    input rst_global,
-    input zera_CJ,
-    input inc_jogador,
-    input mostra_classe,
-    input processar_acao,
-    input inc_seed,
-    input avaliar_eliminacao,
-    input [2:0] jogador_escolhido,
+        input e_seed_reg,
+        input zera_CS, 
+        input rst_global,
+        input zera_CJ,
+        input inc_jogador,
+        input mostra_classe,
+        input processar_acao,
+        input inc_seed,
+        input avaliar_eliminacao,
+        input [2:0] jogador_escolhido,
 
-    output CJ_fim,
-    output [9:0] jogo_atual,
-    output [1:0] classe_atual,
-    output [2:0] jogador_atual,
+        input voto,
+        input morra,
 
-    output [2:0] db_atacado,
-    output [2:0] db_protegido,
-    output [4:0] db_mortes,
-    output jogador_vivo,
+        output CJ_fim,
+        output [9:0] jogo_atual,
+        output [1:0] classe_atual,
+        output [2:0] jogador_atual,
 
-    output [4:0] db_seed
-);
+        output [2:0] db_atacado,
+        output [2:0] db_protegido,
+        output [4:0] db_mortes,
+        output jogador_vivo,
 
-// Lógica de Seed
+        output [4:0] db_seed,
+        
+        output acertou, 
+        output votou,
+        output sinal_lobo_ganhou
+    );
 
-wire [9:0] seed_jogo, jogo;
-wire [4:0] seed_addr;
-wire [2:0] jogador;
-wire [1:0] w_classe_atual;
-reg  [4:0] mortes = 5'b00000;
-reg  [2:0] protegido = 3'b000;
-reg  [2:0] atacado = 3'b000;
+    // L??gica de Seed
 
-//edge_detector DETECTA_SEED(
-//    .clock(clock),
-//    .reset(rst_global),
-//    .sinal(botao),
-//    .pulso(toggle)
-//);
+    wire [9:0] seed_jogo, jogo;
+    wire [4:0] seed_addr;
+    wire [2:0] jogador;
+    wire [1:0] w_classe_atual;
+    wire [2:0]contador_mortes;
+    reg  [4:0] mortes = 5'b00000;
+    reg  [2:0] protegido = 3'b000;
+    reg  [2:0] atacado = 3'b000;
+    reg  [2:0] medico_posicao = 3'b000;
+    reg  [2:0] lobo_posicao = 3'd0;
+    reg [2:0] votado = 3'd5;
+    reg r_votou = 1'b0;
 
-contador_m #(.M(20), .N(5)) CONTA_SEED(
-   .clock(clock),
-   .zera(zera_CS),
-   .conta(inc_seed),
-   .Q(seed_addr),
-   .fim()
-);
+    //edge_detector DETECTA_SEED(
+    //    .clock(clock),
+    //    .reset(rst_global),
+    //    .sinal(botao),
+    //    .pulso(toggle)
+    //);
 
-seed_rom SEED_MEM(
+    contador_m #(.M(20), .N(5)) CONTA_SEED(
     .clock(clock),
-    .address(seed_addr),
-    .data_out(seed_jogo)
-);
+    .zera(zera_CS),
+    .conta(inc_seed),
+    .Q(seed_addr),
+    .fim()
+    );
 
-registrador_M #(.N(10)) REG_SEED(
+    seed_rom SEED_MEM(
+        .clock(clock),
+        .address(seed_addr),
+        .data_out(seed_jogo)
+    );
+
+    registrador_M #(.N(10)) REG_SEED(
+        .clock(clock),
+        .clear(rst_global),
+        .enable(e_seed_reg),
+        .D(seed_jogo),
+        .Q(jogo)
+    );
+
+    contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
     .clock(clock),
-    .clear(rst_global),
-    .enable(e_seed_reg),
-    .D(seed_jogo),
-    .Q(jogo)
-);
+    .zera(zera_CJ),
+    .conta(inc_jogador),
+    .Q(jogador),
+    .fim(CJ_fim)
+    );
 
-contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
-   .clock(clock),
-   .zera(zera_CJ),
-   .conta(inc_jogador),
-   .Q(jogador),
-   .fim(CJ_fim)
-);
+    class_parser CLASSE(
+        .clock(clock),
+        .jogador(jogador),
+        .jogo(jogo),
+        .class(w_classe_atual)
+    );
 
-class_parser CLASSE(
-    .clock(clock),
-    .jogador(jogador),
-    .jogo(jogo),
-    .class(w_classe_atual)
-);
-
-always@(posedge clock) begin
-    if (processar_acao) begin
-        case(w_classe_atual)
-            2'b00 : ;//Fazer nada
-            2'b01 : atacado <= jogador_escolhido;
-            2'b10 : protegido <= jogador_escolhido;
-            default: ;//Fazer nada
-        endcase
+    always@(posedge clock) begin
+        if (processar_acao) begin
+            case(w_classe_atual)
+                2'b00 : ;//Fazer nada
+                2'b01 : atacado <= jogador_escolhido;
+                2'b10 : protegido <= jogador_escolhido;
+                default: ;//Fazer nada
+            endcase
+            
+            if (w_classe_atual == 2'b10) medico_posicao <= jogador;
+            if (w_classe_atual == 2'd1) lobo_posicao <= jogador;
+        end
     end
-end
 
-always@(posedge clock) begin
-	 if (rst_global) mortes <= 5'b00000;
-    else if (avaliar_eliminacao) begin
-        if (atacado != protegido) mortes[atacado] <= 1;
+    always@(posedge clock) begin
+        if (rst_global) mortes <= 5'b00000;
+        else if (avaliar_eliminacao) begin
+            if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
+        end else if (morra) mortes[votado] <= 1'b1;
     end
-end
 
-assign jogador_vivo = !mortes[jogador];
+    always@(posedge clock) begin
+        if (rst_global) begin votado <= 5'd5;
+            r_votou <= 1'b0;
+        end else if (voto) begin
+            if (!mortes[jogador_escolhido]) begin
+                votado <= jogador_escolhido;
+                r_votou <= 1'b1;
+                end
+            else r_votou <= 1'b0;
+        end else if(morra) begin		
+                r_votou <= 1'b0;
+        end	
+        else
+            r_votou <= 1'b0;
+    end
 
-assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
+    assign jogador_vivo = !mortes[jogador];
 
-assign jogo_atual = jogo;
-assign db_seed = seed_addr;
-assign jogador_atual = jogador;
-assign db_protegido = protegido;
-assign db_atacado = atacado;
-assign db_mortes = mortes;
+    assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 
-// Fim Lógica de Seed
+    assign jogo_atual = jogo;
+    assign db_seed = seed_addr;
+    assign jogador_atual = jogador;
+    assign db_protegido = protegido;
+    assign db_atacado = atacado;
+    assign db_mortes = mortes;
+    assign acertou = (votado == lobo_posicao);
+    assign votou = r_votou;
+    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
+    assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
+
+    // Fim L??gica de Seed
 
 
 endmodule
@@ -456,7 +507,7 @@ endmodule
  * baseado no componente bcd7seg.v da Intel FPGA
  *--------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. sseg(6) -> HEX0[6] ou HEX06
  *--------------------------------------------------------------
  * Revisoes  :
@@ -503,34 +554,6 @@ module hexa7seg (hexa, display);
         default: display = 7'b1111111;
     endcase
 endmodule
-
-module regJogadorConvertor (
-    input clock,
-    input [4:0] botoes_jogadores,
-    input reset,
-    
-    output reg [2:0] jogador_escolhido
-);
-
-wire w_OR_botoes;
-
-assign w_OR_botoes = |botoes_jogadores;
-
-always @(posedge clock or posedge reset) begin
-	 if (reset) jogador_escolhido = 3'b000;
-    else if (w_OR_botoes) begin
-        case(botoes_jogadores)
-            5'b00001 : jogador_escolhido = 3'b000; //jogador 0
-            5'b00010 : jogador_escolhido = 3'b001; //jogador 1
-            5'b00100 : jogador_escolhido = 3'b010; //jogador 2
-            5'b01000 : jogador_escolhido = 3'b011; //jogador 3
-            5'b10000 : jogador_escolhido = 3'b100; //jogador 4
-            default  : jogador_escolhido = 3'b000; //catch-all
-        endcase
-    end
-end
-
-endmodule
 //------------------------------------------------------------------
 // Arquivo   : registrador_4.v
 // Projeto   : Experiencia 3 - Projeto de uma Unidade de Controle 
@@ -563,10 +586,37 @@ module registrador_M #(parameter N = 4) (
     assign Q = IQ;
 
 endmodule
+module regJogadorConvertor (
+    input clock,
+    input [4:0] botoes_jogadores,
+    input reset,
+    
+    output reg [2:0] jogador_escolhido
+);
+
+wire w_OR_botoes;
+
+assign w_OR_botoes = |botoes_jogadores;
+
+always @(posedge clock or posedge reset) begin
+	 if (reset) jogador_escolhido = 3'b000;
+    else if (w_OR_botoes) begin
+        case(botoes_jogadores)
+            5'b00001 : jogador_escolhido = 3'b000; //jogador 0
+            5'b00010 : jogador_escolhido = 3'b001; //jogador 1
+            5'b00100 : jogador_escolhido = 3'b010; //jogador 2
+            5'b01000 : jogador_escolhido = 3'b011; //jogador 3
+            5'b10000 : jogador_escolhido = 3'b100; //jogador 4
+            default  : jogador_escolhido = 3'b000; //catch-all
+        endcase
+    end
+end
+
+endmodule
 /*
-00 -> Aldeão
+00 -> Alde??o
 01 -> Lobo
-10 -> Médico
+10 -> M??dico
 */
 
 module seed_rom(
@@ -577,142 +627,199 @@ module seed_rom(
 
 always@(posedge clock) begin
     case(address)
-        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 é o lobo, Jogador 1 é o médico
-        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 é o lobo, Jogador 2 é o médico
-        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 é o lobo, Jogador 3 é o médico
-        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 é o lobo, Jogador 4 é o médico
-        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 é o lobo, Jogador 0 é o médico
-        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 é o lobo, Jogador 2 é o médico
-        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 é o lobo, Jogador 3 é o médico
-        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 é o lobo, Jogador 4 é o médico
-        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 é o lobo, Jogador 0 é o médico
-        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 é o lobo, Jogador 1 é o médico
-        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 é o lobo, Jogador 3 é o médico
-        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 é o lobo, Jogador 4 é o médico
-        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 é o lobo, Jogador 0 é o médico
-        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 é o lobo, Jogador 1 é o médico
-        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 é o lobo, Jogador 2 é o médico
-        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 é o lobo, Jogador 4 é o médico
-        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 é o lobo, Jogador 0 é o médico
-        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 é o lobo, Jogador 1 é o médico
-        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 é o lobo, Jogador 2 é o médico
-        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 é o lobo, Jogador 3 é o médico
+        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 ?? o lobo, Jogador 3 ?? o m??dico
         default: data_out = 10'b01_10_00_00_00;
     endcase
 end
 
 endmodule
 module unidade_controle(
-    input clock,
-    input reset,
-    input jogar,
-    input passa,
-    input CJ_fim,
-    input jogador_vivo,
+        input clock,
+        input reset,
+        input jogar,
+        input passa,
+        input CJ_fim,
+        input jogador_vivo,
+        input acertou,
+        input votou,
+        input sinal_lobo_ganhou,
 
-    output reg e_seed_reg,
-    output reg zera_CS,
-    output reg rst_global,
-    output reg zera_CJ,
-    output reg inc_jogador,
-	output reg inc_seed,
-	output reg mostra_classe,
-    output reg processar_acao,
-    output reg reset_Convertor,
-    output reg avaliar_eliminacao,
+        output reg e_seed_reg,
+        output reg zera_CS,
+        output reg rst_global,
+        output reg zera_CJ,
+        output reg inc_jogador,
+        output reg inc_seed,
+        output reg mostra_classe,
+        output reg processar_acao,
+        output reg reset_Convertor,
+        output reg avaliar_eliminacao,
 
-    output reg [4:0] db_estado
-);
+        output reg [4:0] db_estado,
+        output reg voto,
+        output reg morra
+    );
 
-parameter INICIAL = 5'd0;
-parameter RESETA_TUDO = 5'd1;
-parameter PREPARA_JOGO = 5'd2;
-parameter ARMAZENA_JOGO = 5'd3;
-parameter PREPARA_JOGO_2 = 5'd4;
-parameter PREPARA_NOITE = 5'd5;
-parameter PROXIMO_JOGADOR_NOITE = 5'd6;
-parameter TURNO_NOITE = 5'd7;
-parameter FIM_NOITE = 5'd8;
-parameter DELAY_NOITE = 5'd9;
-parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
-parameter ANUNCIAR_MORTE = 5'd11;
-parameter CHECAR_VIVO = 5'd12;
+    parameter INICIAL = 5'd0;
+    parameter RESETA_TUDO = 5'd1;
+    parameter PREPARA_JOGO = 5'd2;
+    parameter ARMAZENA_JOGO = 5'd3;
+    parameter PREPARA_JOGO_2 = 5'd4;
+    parameter PREPARA_NOITE = 5'd5;
+    parameter PROXIMO_JOGADOR_NOITE = 5'd6;
+    parameter TURNO_NOITE = 5'd7;
+    parameter FIM_NOITE = 5'd8;
+    parameter DELAY_NOITE = 5'd9;
+    parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
+    parameter ANUNCIAR_MORTE = 5'd11;
+    parameter CHECAR_VIVO = 5'd12;
+    parameter DIA_INICIO = 5'd13;
+    parameter DIA_DISCUSSAO = 5'd14;
+    parameter DIA_VOTO = 5'd15;
+    parameter PROCESSA_VOTO = 5'd16;
 
-reg [4:0] Eatual, Eprox;
+    parameter MATARAM_O_MARUITI = 5'd17;
+    parameter CHECAR_LOBO_GANHOU_NOITE = 5'd18;
+    parameter CHECAR_LOBO_GANHOU_DIA = 5'd19;
 
-// Memoria de estado
-always @(posedge clock or posedge reset) begin
-    if (reset)
-        Eatual <= INICIAL;
-    else
-        Eatual <= Eprox;
-end
+    parameter LOBO_PERDEU = 5'd20;
+    parameter LOBO_GANHOU = 5'd21;
 
+    reg [4:0] Eatual, Eprox;
+    // reg [2:0] contador_mortes = 0;
+    // wire [2:0] contador_mortes_calc;
+    // assign contador_mortes_calc = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
 
-// Logica de proximo estado
-always @* begin
-    case(Eatual)
-        INICIAL: Eprox = (jogar) ? RESETA_TUDO : INICIAL;
-        RESETA_TUDO: Eprox = PREPARA_JOGO;
-        PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
-        ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
-        PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
-        PREPARA_NOITE: Eprox = DELAY_NOITE;
-        PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
-        CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : PROXIMO_JOGADOR_NOITE;
-		DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
-        TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
-        FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
-        AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
-        ANUNCIAR_MORTE: Eprox = (passa) ? PREPARA_NOITE : ANUNCIAR_MORTE;
-
-        default: Eprox = INICIAL; 
-    endcase
-end
+    // Memoria de estado
+    always @(posedge clock or posedge reset) begin
+        if (reset)
+            Eatual <= INICIAL;
+        else
+            Eatual <= Eprox;
+    end
 
 
-//Logica de saida (maquina Moore)
-always @* begin
-    rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
+    // Logica de proximo estado
+    always @* begin
+        case(Eatual)
+            INICIAL: Eprox = (jogar) ? RESETA_TUDO : INICIAL;
+            RESETA_TUDO: Eprox = PREPARA_JOGO;
+            PREPARA_JOGO: Eprox = (passa) ? ARMAZENA_JOGO : PREPARA_JOGO;
+            ARMAZENA_JOGO: Eprox = PREPARA_JOGO_2;
+            PREPARA_JOGO_2: Eprox = PREPARA_NOITE;
+            PREPARA_NOITE: Eprox = CHECAR_VIVO;
+            PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
+            CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE);
+            DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
+            TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
+            FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
+            AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
+            // ANUNCIAR_MORTE: Eprox = (passa) ? DIA_INICIO : ANUNCIAR_MORTE;
+            ANUNCIAR_MORTE: Eprox = (passa) ? CHECAR_LOBO_GANHOU_NOITE : ANUNCIAR_MORTE;
 
-    zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
-	 
-	mostra_classe = (Eatual == TURNO_NOITE);
+            CHECAR_LOBO_GANHOU_NOITE: Eprox = (sinal_lobo_ganhou) ? LOBO_GANHOU : DIA_INICIO;
+            CHECAR_LOBO_GANHOU_DIA: Eprox = (sinal_lobo_ganhou) ? LOBO_GANHOU : PREPARA_NOITE;
 
-    processar_acao = (Eatual == TURNO_NOITE);
-
-    zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
-
-    reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
-
-    avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
-	 
-	inc_seed = (Eatual == PREPARA_JOGO);
-
-    e_seed_reg = (Eatual == ARMAZENA_JOGO);
-
-    inc_jogador = (Eatual == PROXIMO_JOGADOR_NOITE);
+            
+            DIA_INICIO: Eprox = DIA_DISCUSSAO;
+            DIA_DISCUSSAO: Eprox = (passa) ? DIA_VOTO : DIA_DISCUSSAO;
+            DIA_VOTO: Eprox = (passa && votou) ? PROCESSA_VOTO : DIA_VOTO;
+            PROCESSA_VOTO: Eprox = (acertou) ? LOBO_PERDEU : MATARAM_O_MARUITI;
+            // MATARAM_O_MARUITI: Eprox = PREPARA_NOITE;
+            MATARAM_O_MARUITI: Eprox = CHECAR_LOBO_GANHOU_DIA;
 
 
-end
+            // CHECAR_LOBO_GANHOU_NOITE: begin
+            //     // contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
+            //     // #1
+            //     if (contador_mortes_calc == 3'd3)
+            //         Eprox = LOBO_GANHOU;
+            //     else
+            //         Eprox = PREPARA_NOITE;
+            // end
 
-always @* begin
-	case (Eatual)
-		INICIAL: db_estado = INICIAL;
-		RESETA_TUDO: db_estado = RESETA_TUDO;
-		PREPARA_JOGO: db_estado = PREPARA_JOGO;
-		ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
-		PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
-		PREPARA_NOITE: db_estado = PREPARA_NOITE;
-        PROXIMO_JOGADOR_NOITE : db_estado = PROXIMO_JOGADOR_NOITE;
-        TURNO_NOITE: db_estado = TURNO_NOITE;
-        FIM_NOITE: db_estado = FIM_NOITE;
-		DELAY_NOITE: db_estado = DELAY_NOITE;
-        AVALIAR_ELIMINACAO_NOITE: db_estado = AVALIAR_ELIMINACAO_NOITE;
-        ANUNCIAR_MORTE: db_estado = ANUNCIAR_MORTE;
-		default:     db_estado = 5'b11111; //erro
-	endcase
-end
+            LOBO_PERDEU: Eprox = (jogar) ? RESETA_TUDO : LOBO_PERDEU;
+            LOBO_GANHOU: Eprox = (jogar) ? RESETA_TUDO : LOBO_GANHOU;
+            
+            
+    
+            default: Eprox = INICIAL; 
+        endcase
+    end
+
+
+    //Logica de saida (maquina Moore)
+    always @* begin
+        rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
+
+        zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
+        
+        mostra_classe = (Eatual == TURNO_NOITE);
+
+        processar_acao = (Eatual == TURNO_NOITE);
+
+        zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
+
+        reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
+
+        avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
+        
+        inc_seed = (Eatual == PREPARA_JOGO);
+
+        e_seed_reg = (Eatual == ARMAZENA_JOGO);
+
+        inc_jogador = (Eatual == PROXIMO_JOGADOR_NOITE);
+        
+        voto = (Eatual == DIA_VOTO);
+        
+        morra = (Eatual == MATARAM_O_MARUITI);
+
+
+    end
+
+    always @* begin
+        case (Eatual)
+            INICIAL: db_estado = INICIAL;
+            RESETA_TUDO: db_estado = RESETA_TUDO;
+            PREPARA_JOGO: db_estado = PREPARA_JOGO;
+            ARMAZENA_JOGO: db_estado = ARMAZENA_JOGO; 
+            PREPARA_JOGO_2: db_estado = PREPARA_JOGO_2;
+            PREPARA_NOITE: db_estado = PREPARA_NOITE;
+            PROXIMO_JOGADOR_NOITE : db_estado = PROXIMO_JOGADOR_NOITE;
+            TURNO_NOITE: db_estado = TURNO_NOITE;
+            FIM_NOITE: db_estado = FIM_NOITE;
+            DELAY_NOITE: db_estado = DELAY_NOITE;
+            AVALIAR_ELIMINACAO_NOITE: db_estado = AVALIAR_ELIMINACAO_NOITE;
+            ANUNCIAR_MORTE: db_estado = ANUNCIAR_MORTE;
+            DIA_INICIO: db_estado = DIA_INICIO;
+            DIA_DISCUSSAO: db_estado = DIA_DISCUSSAO;
+            DIA_VOTO: db_estado = DIA_VOTO;
+            PROCESSA_VOTO: db_estado = PROCESSA_VOTO;
+            MATARAM_O_MARUITI: db_estado = MATARAM_O_MARUITI;
+            LOBO_PERDEU: db_estado = LOBO_PERDEU;
+            CHECAR_LOBO_GANHOU_NOITE: db_estado = CHECAR_LOBO_GANHOU_NOITE;
+            default:     db_estado = 5'b11111; //erro
+        endcase
+    end
 
 
 endmodule

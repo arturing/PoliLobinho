@@ -1,115 +1,150 @@
 module fluxo_dados(
-    input clock,
-//    input botao,
+        input clock,
+    //    input botao,
 
-    input e_seed_reg,
-    input zera_CS, 
-    input rst_global,
-    input zera_CJ,
-    input inc_jogador,
-    input mostra_classe,
-    input processar_acao,
-    input inc_seed,
-    input avaliar_eliminacao,
-    input [2:0] jogador_escolhido,
+        input e_seed_reg,
+        input zera_CS, 
+        input rst_global,
+        input zera_CJ,
+        input inc_jogador,
+        input mostra_classe,
+        input processar_acao,
+        input inc_seed,
+        input avaliar_eliminacao,
+        input [2:0] jogador_escolhido,
 
-    output CJ_fim,
-    output [9:0] jogo_atual,
-    output [1:0] classe_atual,
-    output [2:0] jogador_atual,
+        input voto,
+        input morra,
 
-    output [2:0] db_atacado,
-    output [2:0] db_protegido,
-    output [4:0] db_mortes,
-    output jogador_vivo,
+        output CJ_fim,
+        output [9:0] jogo_atual,
+        output [1:0] classe_atual,
+        output [2:0] jogador_atual,
 
-    output [4:0] db_seed
-);
+        output [2:0] db_atacado,
+        output [2:0] db_protegido,
+        output [4:0] db_mortes,
+        output jogador_vivo,
 
-// Lógica de Seed
+        output [4:0] db_seed,
+        
+        output acertou, 
+        output votou,
+        output sinal_lobo_ganhou
+    );
 
-wire [9:0] seed_jogo, jogo;
-wire [4:0] seed_addr;
-wire [2:0] jogador;
-wire [1:0] w_classe_atual;
-reg  [4:0] mortes = 5'b00000;
-reg  [2:0] protegido = 3'b000;
-reg  [2:0] atacado = 3'b000;
+    // Lógica de Seed
 
-//edge_detector DETECTA_SEED(
-//    .clock(clock),
-//    .reset(rst_global),
-//    .sinal(botao),
-//    .pulso(toggle)
-//);
+    wire [9:0] seed_jogo, jogo;
+    wire [4:0] seed_addr;
+    wire [2:0] jogador;
+    wire [1:0] w_classe_atual;
+    wire [2:0]contador_mortes;
+    reg  [4:0] mortes = 5'b00000;
+    reg  [2:0] protegido = 3'b000;
+    reg  [2:0] atacado = 3'b000;
+    reg  [2:0] medico_posicao = 3'b000;
+    reg  [2:0] lobo_posicao = 3'd0;
+    reg [2:0] votado = 3'd5;
+    reg r_votou = 1'b0;
 
-contador_m #(.M(20), .N(5)) CONTA_SEED(
-   .clock(clock),
-   .zera(zera_CS),
-   .conta(inc_seed),
-   .Q(seed_addr),
-   .fim()
-);
+    //edge_detector DETECTA_SEED(
+    //    .clock(clock),
+    //    .reset(rst_global),
+    //    .sinal(botao),
+    //    .pulso(toggle)
+    //);
 
-seed_rom SEED_MEM(
+    contador_m #(.M(20), .N(5)) CONTA_SEED(
     .clock(clock),
-    .address(seed_addr),
-    .data_out(seed_jogo)
-);
+    .zera(zera_CS),
+    .conta(inc_seed),
+    .Q(seed_addr),
+    .fim()
+    );
 
-registrador_M #(.N(10)) REG_SEED(
+    seed_rom SEED_MEM(
+        .clock(clock),
+        .address(seed_addr),
+        .data_out(seed_jogo)
+    );
+
+    registrador_M #(.N(10)) REG_SEED(
+        .clock(clock),
+        .clear(rst_global),
+        .enable(e_seed_reg),
+        .D(seed_jogo),
+        .Q(jogo)
+    );
+
+    contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
     .clock(clock),
-    .clear(rst_global),
-    .enable(e_seed_reg),
-    .D(seed_jogo),
-    .Q(jogo)
-);
+    .zera(zera_CJ),
+    .conta(inc_jogador),
+    .Q(jogador),
+    .fim(CJ_fim)
+    );
 
-contador_m #(.M(5), .N(3)) CONTA_JOGADOR(
-   .clock(clock),
-   .zera(zera_CJ),
-   .conta(inc_jogador),
-   .Q(jogador),
-   .fim(CJ_fim)
-);
+    class_parser CLASSE(
+        .clock(clock),
+        .jogador(jogador),
+        .jogo(jogo),
+        .class(w_classe_atual)
+    );
 
-class_parser CLASSE(
-    .clock(clock),
-    .jogador(jogador),
-    .jogo(jogo),
-    .class(w_classe_atual)
-);
-
-always@(posedge clock) begin
-    if (processar_acao) begin
-        case(w_classe_atual)
-            2'b00 : ;//Fazer nada
-            2'b01 : atacado <= jogador_escolhido;
-            2'b10 : protegido <= jogador_escolhido;
-            default: ;//Fazer nada
-        endcase
+    always@(posedge clock) begin
+        if (processar_acao) begin
+            case(w_classe_atual)
+                2'b00 : ;//Fazer nada
+                2'b01 : atacado <= jogador_escolhido;
+                2'b10 : protegido <= jogador_escolhido;
+                default: ;//Fazer nada
+            endcase
+            
+            if (w_classe_atual == 2'b10) medico_posicao <= jogador;
+            if (w_classe_atual == 2'd1) lobo_posicao <= jogador;
+        end
     end
-end
 
-always@(posedge clock) begin
-	 if (rst_global) mortes <= 5'b00000;
-    else if (avaliar_eliminacao) begin
-        if (atacado != protegido) mortes[atacado] <= 1;
+    always@(posedge clock) begin
+        if (rst_global) mortes <= 5'b00000;
+        else if (avaliar_eliminacao) begin
+            if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
+        end else if (morra) mortes[votado] <= 1'b1;
     end
-end
 
-assign jogador_vivo = !mortes[jogador];
+    always@(posedge clock) begin
+        if (rst_global) begin votado <= 5'd5;
+            r_votou <= 1'b0;
+        end else if (voto) begin
+            if (!mortes[jogador_escolhido]) begin
+                votado <= jogador_escolhido;
+                r_votou <= 1'b1;
+                end
+            else r_votou <= 1'b0;
+        end else if(morra) begin		
+                r_votou <= 1'b0;
+        end	
+        else
+            r_votou <= 1'b0;
+    end
 
-assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
+    assign jogador_vivo = !mortes[jogador];
 
-assign jogo_atual = jogo;
-assign db_seed = seed_addr;
-assign jogador_atual = jogador;
-assign db_protegido = protegido;
-assign db_atacado = atacado;
-assign db_mortes = mortes;
+    assign classe_atual = (mostra_classe) ? w_classe_atual : 2'b11;
 
-// Fim Lógica de Seed
+    assign jogo_atual = jogo;
+    assign db_seed = seed_addr;
+    assign jogador_atual = jogador;
+    assign db_protegido = protegido;
+    assign db_atacado = atacado;
+    assign db_mortes = mortes;
+    assign acertou = (votado == lobo_posicao);
+    assign votou = r_votou;
+    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
+    assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
+
+    // Fim Lógica de Seed
 
 
 endmodule

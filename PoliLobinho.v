@@ -15,7 +15,9 @@ module PoliLobinho(
 	 output [6:0] db_protegido_7b,
 	 output [2:0] db_jogador_escolhido,
 	 output [4:0] db_mortes,
-	 output db_clock
+	 output db_clock,
+	 output ganhamo,
+	 output votaram
 );
 
 wire e_seed_reg, zera_CS;
@@ -39,12 +41,19 @@ wire reset_Convertor;
 wire avaliar_eliminacao;
 wire jogador_vivo;
 
+wire w_acertou, w_voto, w_morra, w_votou;
+////////////////////////// mudei aqui
+wire sinal_lobo_ganhou;
+
+
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
 assign db_jogador_escolhido = jogador_escolhido;
+assign ganhamo = w_acertou;
+assign votaram = w_votou;
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
@@ -71,6 +80,8 @@ fluxo_dados FD(
 	.inc_jogador(inc_jogador),
 	.inc_seed(w_inc_seed),
 	.avaliar_eliminacao(avaliar_eliminacao),
+	.voto(w_voto),
+	.morra(w_morra),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -84,7 +95,10 @@ fluxo_dados FD(
 	.db_mortes(db_mortes),
 	.jogador_vivo(jogador_vivo),
 
-    .db_seed(db_seed)
+    .db_seed(db_seed),
+	 .acertou(w_acertou),
+	 .votou(w_votou),
+    .sinal_lobo_ganhou(sinal_lobo_ganhou)
 
 );
 
@@ -95,6 +109,9 @@ unidade_controle UC(
 	.passa(pulso_passa),
 	.CJ_fim(CJ_fim),
 	.jogador_vivo(jogador_vivo),
+	.acertou(w_acertou),
+	.votou(w_votou),
+    .sinal_lobo_ganhou(sinal_lobo_ganhou),
 
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
@@ -107,7 +124,9 @@ unidade_controle UC(
 	.reset_Convertor(reset_Convertor),
 	.avaliar_eliminacao(avaliar_eliminacao),
 
-	.db_estado(db_estado)
+	.db_estado(db_estado),
+	.voto(w_voto),
+	.morra(w_morra)
 );
 
 hexa7seg disp0 (
