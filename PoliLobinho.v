@@ -42,6 +42,7 @@ wire avaliar_eliminacao;
 wire jogador_vivo;
 
 wire w_acertou, w_voto, w_morra, w_votou;
+wire jogou;
 ////////////////////////// mudei aqui
 wire sinal_lobo_ganhou;
 
@@ -98,6 +99,7 @@ fluxo_dados FD(
     .db_seed(db_seed),
 	 .acertou(w_acertou),
 	 .votou(w_votou),
+	 .jogou(jogou),
     .sinal_lobo_ganhou(sinal_lobo_ganhou)
 
 );
@@ -111,6 +113,7 @@ unidade_controle UC(
 	.jogador_vivo(jogador_vivo),
 	.acertou(w_acertou),
 	.votou(w_votou),
+	.jogou(jogou),
     .sinal_lobo_ganhou(sinal_lobo_ganhou),
 
 	.e_seed_reg(e_seed_reg),

@@ -42,6 +42,7 @@ wire avaliar_eliminacao;
 wire jogador_vivo;
 
 wire w_acertou, w_voto, w_morra, w_votou;
+wire jogou;
 ////////////////////////// mudei aqui
 wire sinal_lobo_ganhou;
 
@@ -98,6 +99,7 @@ fluxo_dados FD(
     .db_seed(db_seed),
 	 .acertou(w_acertou),
 	 .votou(w_votou),
+	 .jogou(jogou),
     .sinal_lobo_ganhou(sinal_lobo_ganhou)
 
 );
@@ -111,6 +113,7 @@ unidade_controle UC(
 	.jogador_vivo(jogador_vivo),
 	.acertou(w_acertou),
 	.votou(w_votou),
+	.jogou(jogou),
     .sinal_lobo_ganhou(sinal_lobo_ganhou),
 
 	.e_seed_reg(e_seed_reg),
@@ -376,6 +379,7 @@ module fluxo_dados(
         
         output acertou, 
         output votou,
+        output jogou,
         output sinal_lobo_ganhou
     );
 
@@ -393,6 +397,7 @@ module fluxo_dados(
     reg  [2:0] lobo_posicao = 3'd0;
     reg [2:0] votado = 3'd5;
     reg r_votou = 1'b0;
+    reg r_jogou = 1'b0;
 
     //edge_detector DETECTA_SEED(
     //    .clock(clock),
@@ -453,6 +458,18 @@ module fluxo_dados(
     end
 
     always@(posedge clock) begin
+        if (rst_global) r_jogou <= 0;
+        else if(processar_acao) begin
+            case(w_classe_atual)
+                2'b00 : if (jogador_escolhido == 3'd2) r_jogou <= 1; else r_jogou <= 0;
+                2'b01 : if (!mortes[jogador_escolhido] && jogador_escolhido != lobo_posicao) r_jogou <= 1; else r_jogou <= 0;
+                2'b10 : if (!mortes[jogador_escolhido]) r_jogou <= 1; else r_jogou <= 0;
+            endcase
+        end
+
+    end
+
+    always@(posedge clock) begin
         if (rst_global) mortes <= 5'b00000;
         else if (avaliar_eliminacao) begin
             if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
@@ -487,6 +504,7 @@ module fluxo_dados(
     assign db_mortes = mortes;
     assign acertou = (votado == lobo_posicao);
     assign votou = r_votou;
+    assign jogou = r_jogou;
     assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
     assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
 
@@ -662,6 +680,7 @@ module unidade_controle(
         input acertou,
         input votou,
         input sinal_lobo_ganhou,
+        input jogou,
 
         output reg e_seed_reg,
         output reg zera_CS,
@@ -730,7 +749,7 @@ module unidade_controle(
             PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
             CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE);
             DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
-            TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
+            TURNO_NOITE: Eprox = (passa && jogou) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
             FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
             AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
             // ANUNCIAR_MORTE: Eprox = (passa) ? DIA_INICIO : ANUNCIAR_MORTE;
@@ -779,7 +798,7 @@ module unidade_controle(
 
         zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 
-        reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
+        reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE || Eatual == DELAY_NOITE || Eatual == DIA_DISCUSSAO);
 
         avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
         

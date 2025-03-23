@@ -8,6 +8,7 @@ module unidade_controle(
         input acertou,
         input votou,
         input sinal_lobo_ganhou,
+        input jogou,
 
         output reg e_seed_reg,
         output reg zera_CS,
@@ -76,7 +77,7 @@ module unidade_controle(
             PROXIMO_JOGADOR_NOITE : Eprox = CHECAR_VIVO;
             CHECAR_VIVO : Eprox = (jogador_vivo) ? DELAY_NOITE : ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE);
             DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
-            TURNO_NOITE: Eprox = (passa) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
+            TURNO_NOITE: Eprox = (passa && jogou) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
             FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
             AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
             // ANUNCIAR_MORTE: Eprox = (passa) ? DIA_INICIO : ANUNCIAR_MORTE;
@@ -125,7 +126,7 @@ module unidade_controle(
 
         zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 
-        reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE);
+        reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE || Eatual == DELAY_NOITE || Eatual == DIA_DISCUSSAO);
 
         avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
         
