@@ -1,5 +1,6 @@
 module PoliLobinho(
 	input clock,
+	input pular,
 	input [4:0] botoes_jogadores,
 	input reset,
 	input jogar,
@@ -29,6 +30,7 @@ wire [2:0] jogador_escolhido;
 wire [1:0] classe_atual;
 wire [9:0] jogo_atual;
 wire processar_acao;
+wire w_pular;
 wire [4:0] w_botoes_jogadores;
 wire w_reset;
 wire w_jogar;
@@ -40,6 +42,7 @@ wire [2:0] protegido;
 wire reset_Convertor;
 wire avaliar_eliminacao;
 wire jogador_vivo;
+wire reset_Pular;
 
 wire w_acertou, w_voto, w_morra, w_votou;
 wire jogou;
@@ -49,6 +52,7 @@ wire sinal_lobo_ganhou;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
+assign w_pular = !pular;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
@@ -66,7 +70,7 @@ edge_detector DETECTA_PASSA(
 regJogadorConvertor CONVERTE_JOGADOR(
 	.clock(clock),
 	.reset(reset_Convertor),
-	.botoes_jogadores(w_botoes_jogadores),
+	.botoes_jogadores({w_pular, w_botoes_jogadores}),
 	.jogador_escolhido(jogador_escolhido)
 );
 
@@ -83,6 +87,7 @@ fluxo_dados FD(
 	.avaliar_eliminacao(avaliar_eliminacao),
 	.voto(w_voto),
 	.morra(w_morra),
+	.reset_Pular(reset_Pular),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -126,6 +131,7 @@ unidade_controle UC(
 	.processar_acao(processar_acao),
 	.reset_Convertor(reset_Convertor),
 	.avaliar_eliminacao(avaliar_eliminacao),
+	.reset_Pular(reset_Pular),
 
 	.db_estado(db_estado),
 	.voto(w_voto),

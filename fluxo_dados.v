@@ -15,6 +15,7 @@ module fluxo_dados(
 
         input voto,
         input morra,
+        input reset_Pular,
 
         output CJ_fim,
         output [9:0] jogo_atual,
@@ -41,7 +42,7 @@ module fluxo_dados(
     wire [2:0] jogador;
     wire [1:0] w_classe_atual;
     wire [2:0]contador_mortes;
-    reg  [4:0] mortes = 5'b00000;
+    reg  [5:0] mortes = 6'b000000;
     reg  [2:0] protegido = 3'b000;
     reg  [2:0] atacado = 3'b000;
     reg  [2:0] medico_posicao = 3'b000;
@@ -112,9 +113,9 @@ module fluxo_dados(
         if (rst_global) r_jogou <= 0;
         else if(processar_acao) begin
             case(w_classe_atual)
-                2'b00 : if (jogador_escolhido == 3'd2) r_jogou <= 1; else r_jogou <= 0;
-                2'b01 : if (!mortes[jogador_escolhido] && jogador_escolhido != lobo_posicao) r_jogou <= 1; else r_jogou <= 0;
-                2'b10 : if (!mortes[jogador_escolhido]) r_jogou <= 1; else r_jogou <= 0;
+                2'b00 : if (jogador_escolhido != 3'b111) r_jogou <= 1; else r_jogou <= 0;
+                2'b01 : if ((!mortes[jogador_escolhido] && jogador_escolhido != lobo_posicao && jogador_escolhido != 3'b111) || jogador_escolhido == 3'b101) r_jogou <= 1; else r_jogou <= 0;
+                2'b10 : if ((!mortes[jogador_escolhido] && jogador_escolhido != 3'b111) || jogador_escolhido == 3'b101) r_jogou <= 1; else r_jogou <= 0;
             endcase
         end
 
@@ -125,6 +126,7 @@ module fluxo_dados(
         else if (avaliar_eliminacao) begin
             if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
         end else if (morra) mortes[votado] <= 1'b1;
+        else if (reset_Pular) mortes[5'd5] <= 1'b0;
     end
 
     always@(posedge clock) begin

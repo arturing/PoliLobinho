@@ -20,6 +20,7 @@ module unidade_controle(
         output reg processar_acao,
         output reg reset_Convertor,
         output reg avaliar_eliminacao,
+        output reg reset_Pular,
 
         output reg [4:0] db_estado,
         output reg voto,
@@ -127,6 +128,8 @@ module unidade_controle(
         zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 
         reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE || Eatual == DELAY_NOITE || Eatual == DIA_DISCUSSAO);
+
+        reset_Pular = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == FIM_NOITE || Eatual == PREPARA_NOITE);
 
         avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
         

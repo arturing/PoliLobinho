@@ -1,5 +1,6 @@
 module PoliLobinho(
 	input clock,
+	input pular,
 	input [4:0] botoes_jogadores,
 	input reset,
 	input jogar,
@@ -29,6 +30,7 @@ wire [2:0] jogador_escolhido;
 wire [1:0] classe_atual;
 wire [9:0] jogo_atual;
 wire processar_acao;
+wire w_pular;
 wire [4:0] w_botoes_jogadores;
 wire w_reset;
 wire w_jogar;
@@ -40,6 +42,7 @@ wire [2:0] protegido;
 wire reset_Convertor;
 wire avaliar_eliminacao;
 wire jogador_vivo;
+wire reset_Pular;
 
 wire w_acertou, w_voto, w_morra, w_votou;
 wire jogou;
@@ -49,6 +52,7 @@ wire sinal_lobo_ganhou;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
+assign w_pular = !pular;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
@@ -66,7 +70,7 @@ edge_detector DETECTA_PASSA(
 regJogadorConvertor CONVERTE_JOGADOR(
 	.clock(clock),
 	.reset(reset_Convertor),
-	.botoes_jogadores(w_botoes_jogadores),
+	.botoes_jogadores({w_pular, w_botoes_jogadores}),
 	.jogador_escolhido(jogador_escolhido)
 );
 
@@ -83,6 +87,7 @@ fluxo_dados FD(
 	.avaliar_eliminacao(avaliar_eliminacao),
 	.voto(w_voto),
 	.morra(w_morra),
+	.reset_Pular(reset_Pular),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -126,6 +131,7 @@ unidade_controle UC(
 	.processar_acao(processar_acao),
 	.reset_Convertor(reset_Convertor),
 	.avaliar_eliminacao(avaliar_eliminacao),
+	.reset_Pular(reset_Pular),
 
 	.db_estado(db_estado),
 	.voto(w_voto),
@@ -236,7 +242,6 @@ module contador_m #(parameter M=100, N=7)
       else            fim = 0;
 
 endmodule
-
 /* ------------------------------------------------------------------------
  *  Arquivo   : edge_detector.v
  *  Projeto   : Experiencia 4 - Desenvolvimento de Projeto de
@@ -280,7 +285,6 @@ module edge_detector (
     assign pulso = ~reg1 & reg0;
 
 endmodule
-
 /*--------------------------------------------------------------
  * Arquivo   : estado7seg.v
  * Projeto   : Jogo do Desafio da Memoria
@@ -292,7 +296,7 @@ endmodule
  * saida: display - codigo de 7 bits para display de 7 segmentos
  * ----------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. display(6) -> HEX0[6] ou HEX06
  * ----------------------------------------------------------------
  * Revisoes  :
@@ -349,7 +353,6 @@ end
 endmodule
 
 
-
 module fluxo_dados(
         input clock,
     //    input botao,
@@ -367,6 +370,7 @@ module fluxo_dados(
 
         input voto,
         input morra,
+        input reset_Pular,
 
         output CJ_fim,
         output [9:0] jogo_atual,
@@ -386,14 +390,14 @@ module fluxo_dados(
         output sinal_lobo_ganhou
     );
 
-    // Lógica de Seed
+    // L??gica de Seed
 
     wire [9:0] seed_jogo, jogo;
     wire [4:0] seed_addr;
     wire [2:0] jogador;
     wire [1:0] w_classe_atual;
     wire [2:0]contador_mortes;
-    reg  [4:0] mortes = 5'b00000;
+    reg  [5:0] mortes = 6'b000000;
     reg  [2:0] protegido = 3'b000;
     reg  [2:0] atacado = 3'b000;
     reg  [2:0] medico_posicao = 3'b000;
@@ -464,9 +468,9 @@ module fluxo_dados(
         if (rst_global) r_jogou <= 0;
         else if(processar_acao) begin
             case(w_classe_atual)
-                2'b00 : if (jogador_escolhido == 3'd2) r_jogou <= 1; else r_jogou <= 0;
-                2'b01 : if (!mortes[jogador_escolhido] && jogador_escolhido != lobo_posicao) r_jogou <= 1; else r_jogou <= 0;
-                2'b10 : if (!mortes[jogador_escolhido]) r_jogou <= 1; else r_jogou <= 0;
+                2'b00 : if (jogador_escolhido != 3'b111) r_jogou <= 1; else r_jogou <= 0;
+                2'b01 : if ((!mortes[jogador_escolhido] && jogador_escolhido != lobo_posicao && jogador_escolhido != 3'b111) || jogador_escolhido == 3'b101) r_jogou <= 1; else r_jogou <= 0;
+                2'b10 : if ((!mortes[jogador_escolhido] && jogador_escolhido != 3'b111) || jogador_escolhido == 3'b101) r_jogou <= 1; else r_jogou <= 0;
             endcase
         end
 
@@ -477,6 +481,7 @@ module fluxo_dados(
         else if (avaliar_eliminacao) begin
             if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
         end else if (morra) mortes[votado] <= 1'b1;
+        else if (reset_Pular) mortes[5'd5] <= 1'b0;
     end
 
     always@(posedge clock) begin
@@ -511,7 +516,7 @@ module fluxo_dados(
     assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
     assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
 
-    // Fim Lógica de Seed
+    // Fim L??gica de Seed
 
 
 endmodule
@@ -528,7 +533,7 @@ endmodule
  * baseado no componente bcd7seg.v da Intel FPGA
  *--------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. sseg(6) -> HEX0[6] ou HEX06
  *--------------------------------------------------------------
  * Revisoes  :
@@ -575,34 +580,6 @@ module hexa7seg (hexa, display);
         default: display = 7'b1111111;
     endcase
 endmodule
-
-module regJogadorConvertor (
-    input clock,
-    input [4:0] botoes_jogadores,
-    input reset,
-    
-    output reg [2:0] jogador_escolhido
-);
-
-wire w_OR_botoes;
-
-assign w_OR_botoes = |botoes_jogadores;
-
-always @(posedge clock or posedge reset) begin
-	 if (reset) jogador_escolhido = 3'b000;
-    else if (w_OR_botoes) begin
-        case(botoes_jogadores)
-            5'b00001 : jogador_escolhido = 3'b000; //jogador 0
-            5'b00010 : jogador_escolhido = 3'b001; //jogador 1
-            5'b00100 : jogador_escolhido = 3'b010; //jogador 2
-            5'b01000 : jogador_escolhido = 3'b011; //jogador 3
-            5'b10000 : jogador_escolhido = 3'b100; //jogador 4
-            default  : jogador_escolhido = 3'b000; //catch-all
-        endcase
-    end
-end
-
-endmodule
 //------------------------------------------------------------------
 // Arquivo   : registrador_4.v
 // Projeto   : Experiencia 3 - Projeto de uma Unidade de Controle 
@@ -635,10 +612,38 @@ module registrador_M #(parameter N = 4) (
     assign Q = IQ;
 
 endmodule
+module regJogadorConvertor (
+    input clock,
+    input [5:0] botoes_jogadores,
+    input reset,
+    
+    output reg [2:0] jogador_escolhido
+);
+
+wire w_OR_botoes;
+
+assign w_OR_botoes = |botoes_jogadores;
+
+always @(posedge clock or posedge reset) begin
+	if (reset) jogador_escolhido = 3'b111;
+    else if (w_OR_botoes) begin
+        case(botoes_jogadores)
+            6'b000001 : jogador_escolhido = 3'b000; //jogador 0
+            6'b000010 : jogador_escolhido = 3'b001; //jogador 1
+            6'b000100 : jogador_escolhido = 3'b010; //jogador 2
+            6'b001000 : jogador_escolhido = 3'b011; //jogador 3
+            6'b010000 : jogador_escolhido = 3'b100; //jogador 4
+            6'b100000 : jogador_escolhido = 3'b101; //Pular
+            default   : jogador_escolhido = 3'b111; //catch-all
+        endcase
+    end
+end
+
+endmodule
 /*
-00 -> Aldeão
+00 -> Alde??o
 01 -> Lobo
-10 -> Médico
+10 -> M??dico
 */
 
 module seed_rom(
@@ -649,26 +654,26 @@ module seed_rom(
 
 always@(posedge clock) begin
     case(address)
-        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 é o lobo, Jogador 1 é o médico
-        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 é o lobo, Jogador 2 é o médico
-        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 é o lobo, Jogador 3 é o médico
-        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 é o lobo, Jogador 4 é o médico
-        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 é o lobo, Jogador 0 é o médico
-        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 é o lobo, Jogador 2 é o médico
-        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 é o lobo, Jogador 3 é o médico
-        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 é o lobo, Jogador 4 é o médico
-        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 é o lobo, Jogador 0 é o médico
-        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 é o lobo, Jogador 1 é o médico
-        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 é o lobo, Jogador 3 é o médico
-        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 é o lobo, Jogador 4 é o médico
-        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 é o lobo, Jogador 0 é o médico
-        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 é o lobo, Jogador 1 é o médico
-        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 é o lobo, Jogador 2 é o médico
-        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 é o lobo, Jogador 4 é o médico
-        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 é o lobo, Jogador 0 é o médico
-        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 é o lobo, Jogador 1 é o médico
-        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 é o lobo, Jogador 2 é o médico
-        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 é o lobo, Jogador 3 é o médico
+        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 ?? o lobo, Jogador 3 ?? o m??dico
         default: data_out = 10'b01_10_00_00_00;
     endcase
 end
@@ -696,6 +701,7 @@ module unidade_controle(
         output reg processar_acao,
         output reg reset_Convertor,
         output reg avaliar_eliminacao,
+        output reg reset_Pular,
 
         output reg [4:0] db_estado,
         output reg voto,
@@ -803,6 +809,8 @@ module unidade_controle(
         zera_CJ = (Eatual == PREPARA_NOITE || Eatual == INICIAL || Eatual == RESETA_TUDO);
 
         reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE || Eatual == DELAY_NOITE || Eatual == DIA_DISCUSSAO);
+
+        reset_Pular = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == FIM_NOITE || Eatual == PREPARA_NOITE);
 
         avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
         
