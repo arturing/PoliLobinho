@@ -1,11 +1,13 @@
 module fluxo_dados(
         input clock,
+		  input clock_10k,
     //    input botao,
 
         input e_seed_reg,
         input zera_CS, 
         input rst_global,
         input zera_CJ,
+		  input zera_CT,
         input inc_jogador,
         input mostra_classe,
         input processar_acao,
@@ -16,8 +18,10 @@ module fluxo_dados(
         input voto,
         input morra,
         input reset_Pular,
+        input discussao,
 
         output CJ_fim,
+		  output timeout,
         output [9:0] jogo_atual,
         output [1:0] classe_atual,
         output [2:0] jogador_atual,
@@ -50,6 +54,8 @@ module fluxo_dados(
     reg [2:0] votado = 3'd5;
     reg r_votou = 1'b0;
     reg r_jogou = 1'b0;
+	 
+	 wire fim_segundo, fim_minuto;
 
     //edge_detector DETECTA_SEED(
     //    .clock(clock),
@@ -64,6 +70,30 @@ module fluxo_dados(
     .conta(inc_seed),
     .Q(seed_addr),
     .fim()
+    );
+	 
+	 contador_m #(.M(500), .N(9)) CONTA_SEGUNDOS(
+    .clock(clock_10k),
+    .zera(zera_CT),
+    .conta(discussao),
+    .Q(),
+    .fim(fim_segundo)
+    );
+	 
+	 contador_m #(.M(60), .N(6)) CONTA_MINUTOS(
+    .clock(fim_segundo),
+    .zera(zera_CT),
+    .conta(discussao),
+    .Q(),
+    .fim(fim_minuto)
+    );
+	 
+	 contador_m #(.M(3), .N(2)) CONTA_TIMEOUT(
+    .clock(fim_minuto),
+    .zera(zera_CT),
+    .conta(discussao && !timeout),
+    .Q(),
+    .fim(timeout)
     );
 
     seed_rom SEED_MEM(
@@ -94,6 +124,11 @@ module fluxo_dados(
         .jogo(jogo),
         .class(w_classe_atual)
     );
+	 
+	 conta_mortes conta_mortes(
+			.mortes(mortes[4:0]),
+			.count(contador_mortes)
+	 );
 
     always@(posedge clock) begin
         if (processar_acao) begin
@@ -158,7 +193,7 @@ module fluxo_dados(
     assign acertou = (votado == lobo_posicao);
     assign votou = r_votou;
     assign jogou = r_jogou;
-    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
+//    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
     assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
 
     // Fim Lógica de Seed

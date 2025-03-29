@@ -23,7 +23,11 @@ module unidade_controle(
         output reg reset_Pular,
 
         output reg [4:0] db_estado,
-        output reg voto,
+        output reg votacao,
+		  output reg vitoria_lobo,
+		  output reg vitoria_cidadao,
+		  output reg zera_CT,
+          output reg discussao,
         output reg morra
     );
 
@@ -120,6 +124,10 @@ module unidade_controle(
         rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
         zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
+		  
+		zera_CT = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == DIA_INICIO || Eatual == DIA_VOTO);
+
+        discussao = (Eatual == DIA_DISCUSSAO);
         
         mostra_classe = (Eatual == TURNO_NOITE);
 
@@ -139,9 +147,13 @@ module unidade_controle(
 
         inc_jogador = (Eatual == PROXIMO_JOGADOR_NOITE);
         
-        voto = (Eatual == DIA_VOTO);
+        votacao = (Eatual == DIA_VOTO);
         
         morra = (Eatual == MATARAM_O_MARUITI);
+		  
+		  vitoria_lobo = (Eatual == LOBO_GANHOU);
+		  
+		  vitoria_cidadao = (Eatual == LOBO_PERDEU);
 
 
     end

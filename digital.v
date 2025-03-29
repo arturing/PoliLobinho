@@ -1,5 +1,6 @@
 module PoliLobinho(
 	input clock,
+	input clock_10k,
 	input pular,
 	input [4:0] botoes_jogadores,
 	input reset,
@@ -14,11 +15,16 @@ module PoliLobinho(
 	 output [6:0] db_seed_7b,
 	 output [6:0] db_atacado_7b,
 	 output [6:0] db_protegido_7b,
-	 output [2:0] db_jogador_escolhido,
+	 output [6:0] db_jogador_escolhido,
 	 output [4:0] db_mortes,
 	 output db_clock,
-	 output ganhamo,
-	 output votaram
+	 //output ganhamo,
+	 //output votaram,
+	 output votacao,
+	 output vitoria_lobo,
+	 output vitoria_cidadao,
+	 output timeout,
+	 output [2:0] db_funcoes
 );
 
 wire e_seed_reg, zera_CS;
@@ -44,11 +50,14 @@ wire avaliar_eliminacao;
 wire jogador_vivo;
 wire reset_Pular;
 
-wire w_acertou, w_voto, w_morra, w_votou;
+wire w_acertou, w_votacao, w_morra, w_votou;
 wire jogou;
 ////////////////////////// mudei aqui
 wire sinal_lobo_ganhou;
+wire zera_CT, discussao;
 
+wire [6:0] w_db_jogador_atual;
+wire [6:0] w_db_jogador_escolhido;
 
 assign db_clock = clock;
 assign w_botoes_jogadores = ~botoes_jogadores;
@@ -56,9 +65,13 @@ assign w_pular = !pular;
 assign w_reset = !reset;
 assign w_jogar = !jogar;
 assign w_passa = !passa;
-assign db_jogador_escolhido = jogador_escolhido;
-assign ganhamo = w_acertou;
-assign votaram = w_votou;
+//assign ganhamo = w_acertou;
+//assign votaram = w_votou;
+assign votacao = w_votacao;
+
+assign db_jogador_atual = ~w_db_jogador_atual;
+assign db_jogador_escolhido = ~w_db_jogador_escolhido;
+
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
@@ -76,18 +89,21 @@ regJogadorConvertor CONVERTE_JOGADOR(
 
 fluxo_dados FD(
 	.clock(clock),
+	.clock_10k(clock_10k),
 //	.botao(w_botao),
 
 	.e_seed_reg(e_seed_reg),
 	.zera_CS(zera_CS),
+	.zera_CT(zera_CT),
 	.rst_global(rst_global),
 	.zera_CJ(zera_CJ),
 	.inc_jogador(inc_jogador),
 	.inc_seed(w_inc_seed),
 	.avaliar_eliminacao(avaliar_eliminacao),
-	.voto(w_voto),
+	.voto(w_votacao),
 	.morra(w_morra),
 	.reset_Pular(reset_Pular),
+	.discussao(discussao),
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -100,6 +116,7 @@ fluxo_dados FD(
 	.db_protegido(protegido),
 	.db_mortes(db_mortes),
 	.jogador_vivo(jogador_vivo),
+	.timeout(timeout),
 
     .db_seed(db_seed),
 	 .acertou(w_acertou),
@@ -132,9 +149,13 @@ unidade_controle UC(
 	.reset_Convertor(reset_Convertor),
 	.avaliar_eliminacao(avaliar_eliminacao),
 	.reset_Pular(reset_Pular),
-
+	.zera_CT(zera_CT),
+	.discussao(discussao),
+	
 	.db_estado(db_estado),
-	.voto(w_voto),
+	.votacao(w_votacao),
+	.vitoria_lobo(vitoria_lobo),
+	.vitoria_cidadao(vitoria_cidadao),
 	.morra(w_morra)
 );
 
@@ -146,7 +167,7 @@ hexa7seg disp0 (
 
 hexa7seg disp1 (
 	.hexa({1'b0,jogador_atual}),
-	.display(db_jogador_atual)
+	.display(w_db_jogador_atual)
 
 );
 
@@ -173,6 +194,67 @@ estado7seg disp5 (
 	.display(db_estado_7b)
 
 );
+
+hexa7seg disp6 (
+	.hexa({1'b0,jogador_escolhido}),
+	.display(w_db_jogador_escolhido)
+
+);
+
+class_to_led_converter CONVERTER_LED(
+	.class(classe_atual),
+	.LEDs(db_funcoes)	
+);
+
+endmodule
+
+module class_to_led_converter (
+	input[1:0] class,
+	output reg [2:0] LEDs
+);
+
+parameter aldeao = 2'd0;
+parameter lobo = 2'd1;
+parameter medico = 2'd2;
+
+always@* begin
+	case(class)
+		aldeao: LEDs = 3'b001; 
+		lobo: LEDs = 3'b100;
+		medico: LEDs = 3'b010;
+		default: LEDs = 3'b000;
+	endcase
+end
+endmodule
+module adder_3b( 
+    input [2:0] a, b,
+    input cin,
+    output [2:0] cout,
+    output [2:0] sum );
+    
+    full_adder inst_full_adder0(
+        .a(a[0]),
+        .b(b[0]),
+        .cin(cin),
+        .sum(sum[0]),
+        .cout(cout[0])
+    );
+    
+   full_adder inst_full_adder1(
+       .a(a[1]),
+       .b(b[1]),
+       .cin(cout[0]),
+       .sum(sum[1]),
+       .cout(cout[1])
+    );
+    
+    full_adder inst_full_adder2(
+        .a(a[2]),
+        .b(b[2]),
+        .cin(cout[1]),
+        .sum(sum[2]),
+        .cout(cout[2])
+    );
 
 endmodule
 module class_parser(
@@ -242,7 +324,50 @@ module contador_m #(parameter M=100, N=7)
       else            fim = 0;
 
 endmodule
-
+module conta_mortes (
+	input [4:0]mortes,
+    output [2:0]count 
+);
+	
+	wire [2:0] adder0_out, adder1_out, adder2_out, adder3_out;
+	
+    adder_3b adder0 (
+        .a({2'b0, mortes[0]}),
+		  .b({2'b0, mortes[1]}),
+		  .cin(1'b0),
+		  .sum(adder0_out)
+		  
+    );
+	 
+    adder_3b adder1 (
+        .a({2'b0, mortes[2]}),
+		  .b({2'b0, mortes[3]}),
+		  .cin(1'b0),
+		  .sum(adder1_out)
+		  
+    );	
+	 
+	 adder_3b adder2 (
+        .a(adder0_out),
+		  .b(adder1_out),
+		  .cin(1'b0),
+		  .sum(adder2_out)
+		  
+    );
+	 
+	 
+	 
+	 adder_3b adder3 (
+        .a(adder2_out),
+		  .b({2'b0, mortes[4]}),
+		  .cin(1'b0),
+		  .sum(adder3_out)
+		  
+    );
+	 
+	 assign count = adder3_out;
+    
+endmodule 
 /* ------------------------------------------------------------------------
  *  Arquivo   : edge_detector.v
  *  Projeto   : Experiencia 4 - Desenvolvimento de Projeto de
@@ -286,7 +411,6 @@ module edge_detector (
     assign pulso = ~reg1 & reg0;
 
 endmodule
-
 /*--------------------------------------------------------------
  * Arquivo   : estado7seg.v
  * Projeto   : Jogo do Desafio da Memoria
@@ -298,7 +422,7 @@ endmodule
  * saida: display - codigo de 7 bits para display de 7 segmentos
  * ----------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. display(6) -> HEX0[6] ou HEX06
  * ----------------------------------------------------------------
  * Revisoes  :
@@ -355,15 +479,16 @@ end
 endmodule
 
 
-
 module fluxo_dados(
         input clock,
+		  input clock_10k,
     //    input botao,
 
         input e_seed_reg,
         input zera_CS, 
         input rst_global,
         input zera_CJ,
+		  input zera_CT,
         input inc_jogador,
         input mostra_classe,
         input processar_acao,
@@ -374,8 +499,10 @@ module fluxo_dados(
         input voto,
         input morra,
         input reset_Pular,
+        input discussao,
 
         output CJ_fim,
+		  output timeout,
         output [9:0] jogo_atual,
         output [1:0] classe_atual,
         output [2:0] jogador_atual,
@@ -393,7 +520,7 @@ module fluxo_dados(
         output sinal_lobo_ganhou
     );
 
-    // Lógica de Seed
+    // L??gica de Seed
 
     wire [9:0] seed_jogo, jogo;
     wire [4:0] seed_addr;
@@ -408,6 +535,8 @@ module fluxo_dados(
     reg [2:0] votado = 3'd5;
     reg r_votou = 1'b0;
     reg r_jogou = 1'b0;
+	 
+	 wire fim_segundo, fim_minuto;
 
     //edge_detector DETECTA_SEED(
     //    .clock(clock),
@@ -422,6 +551,30 @@ module fluxo_dados(
     .conta(inc_seed),
     .Q(seed_addr),
     .fim()
+    );
+	 
+	 contador_m #(.M(500), .N(9)) CONTA_SEGUNDOS(
+    .clock(clock_10k),
+    .zera(zera_CT),
+    .conta(discussao),
+    .Q(),
+    .fim(fim_segundo)
+    );
+	 
+	 contador_m #(.M(60), .N(6)) CONTA_MINUTOS(
+    .clock(fim_segundo),
+    .zera(zera_CT),
+    .conta(discussao),
+    .Q(),
+    .fim(fim_minuto)
+    );
+	 
+	 contador_m #(.M(3), .N(2)) CONTA_TIMEOUT(
+    .clock(fim_minuto),
+    .zera(zera_CT),
+    .conta(discussao && !timeout),
+    .Q(),
+    .fim(timeout)
     );
 
     seed_rom SEED_MEM(
@@ -452,6 +605,11 @@ module fluxo_dados(
         .jogo(jogo),
         .class(w_classe_atual)
     );
+	 
+	 conta_mortes conta_mortes(
+			.mortes(mortes[4:0]),
+			.count(contador_mortes)
+	 );
 
     always@(posedge clock) begin
         if (processar_acao) begin
@@ -516,13 +674,21 @@ module fluxo_dados(
     assign acertou = (votado == lobo_posicao);
     assign votou = r_votou;
     assign jogou = r_jogou;
-    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
+//    assign contador_mortes = mortes[0] + mortes[1] + mortes[2] + mortes[3] + mortes[4];
     assign sinal_lobo_ganhou = (contador_mortes ==  3'd3);
 
-    // Fim Lógica de Seed
+    // Fim L??gica de Seed
 
 
 endmodule
+module full_adder (
+	input a, b, cin,
+    output sum, cout
+);
+    assign sum = a ^ b ^ cin;
+    assign cout =a&b | a&cin | b&cin;
+    
+endmodule 
 /* ----------------------------------------------------------------
  * Arquivo   : hexa7seg.v
  * Projeto   : Experiencia 2 - Um Fluxo de Dados Simples
@@ -536,7 +702,7 @@ endmodule
  * baseado no componente bcd7seg.v da Intel FPGA
  *--------------------------------------------------------------
  * dica de uso: mapeamento para displays da placa DE0-CV
- *              bit 6 mais significativo é o bit a esquerda
+ *              bit 6 mais significativo ?? o bit a esquerda
  *              p.ex. sseg(6) -> HEX0[6] ou HEX06
  *--------------------------------------------------------------
  * Revisoes  :
@@ -583,35 +749,6 @@ module hexa7seg (hexa, display);
         default: display = 7'b1111111;
     endcase
 endmodule
-
-module regJogadorConvertor (
-    input clock,
-    input [5:0] botoes_jogadores,
-    input reset,
-    
-    output reg [2:0] jogador_escolhido
-);
-
-wire w_OR_botoes;
-
-assign w_OR_botoes = |botoes_jogadores;
-
-always @(posedge clock or posedge reset) begin
-	if (reset) jogador_escolhido = 3'b111;
-    else if (w_OR_botoes) begin
-        case(botoes_jogadores)
-            6'b000001 : jogador_escolhido = 3'b000; //jogador 0
-            6'b000010 : jogador_escolhido = 3'b001; //jogador 1
-            6'b000100 : jogador_escolhido = 3'b010; //jogador 2
-            6'b001000 : jogador_escolhido = 3'b011; //jogador 3
-            6'b010000 : jogador_escolhido = 3'b100; //jogador 4
-            6'b100000 : jogador_escolhido = 3'b101; //Pular
-            default   : jogador_escolhido = 3'b111; //catch-all
-        endcase
-    end
-end
-
-endmodule
 //------------------------------------------------------------------
 // Arquivo   : registrador_4.v
 // Projeto   : Experiencia 3 - Projeto de uma Unidade de Controle 
@@ -644,10 +781,38 @@ module registrador_M #(parameter N = 4) (
     assign Q = IQ;
 
 endmodule
+module regJogadorConvertor (
+    input clock,
+    input [5:0] botoes_jogadores,
+    input reset,
+    
+    output reg [2:0] jogador_escolhido
+);
+
+wire w_OR_botoes;
+
+assign w_OR_botoes = |botoes_jogadores;
+
+always @(posedge clock or posedge reset) begin
+	if (reset) jogador_escolhido = 3'b111;
+    else if (w_OR_botoes) begin
+        case(botoes_jogadores)
+            6'b000001 : jogador_escolhido = 3'b000; //jogador 0
+            6'b000010 : jogador_escolhido = 3'b001; //jogador 1
+            6'b000100 : jogador_escolhido = 3'b010; //jogador 2
+            6'b001000 : jogador_escolhido = 3'b011; //jogador 3
+            6'b010000 : jogador_escolhido = 3'b100; //jogador 4
+            6'b100000 : jogador_escolhido = 3'b101; //Pular
+            default   : jogador_escolhido = 3'b111; //catch-all
+        endcase
+    end
+end
+
+endmodule
 /*
-00 -> Aldeão
+00 -> Alde??o
 01 -> Lobo
-10 -> Médico
+10 -> M??dico
 */
 
 module seed_rom(
@@ -658,26 +823,26 @@ module seed_rom(
 
 always@(posedge clock) begin
     case(address)
-        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 é o lobo, Jogador 1 é o médico
-        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 é o lobo, Jogador 2 é o médico
-        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 é o lobo, Jogador 3 é o médico
-        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 é o lobo, Jogador 4 é o médico
-        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 é o lobo, Jogador 0 é o médico
-        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 é o lobo, Jogador 2 é o médico
-        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 é o lobo, Jogador 3 é o médico
-        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 é o lobo, Jogador 4 é o médico
-        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 é o lobo, Jogador 0 é o médico
-        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 é o lobo, Jogador 1 é o médico
-        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 é o lobo, Jogador 3 é o médico
-        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 é o lobo, Jogador 4 é o médico
-        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 é o lobo, Jogador 0 é o médico
-        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 é o lobo, Jogador 1 é o médico
-        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 é o lobo, Jogador 2 é o médico
-        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 é o lobo, Jogador 4 é o médico
-        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 é o lobo, Jogador 0 é o médico
-        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 é o lobo, Jogador 1 é o médico
-        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 é o lobo, Jogador 2 é o médico
-        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 é o lobo, Jogador 3 é o médico
+        5'd0: data_out = 10'b01_10_00_00_00; // Jogador 0 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd1: data_out = 10'b01_00_10_00_00; // Jogador 0 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd2: data_out = 10'b01_00_00_10_00; // Jogador 0 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd3: data_out = 10'b01_00_00_00_10; // Jogador 0 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd4: data_out = 10'b10_01_00_00_00; // Jogador 1 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd5: data_out = 10'b00_01_10_00_00; // Jogador 1 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd6: data_out = 10'b00_01_00_10_00; // Jogador 1 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd7: data_out = 10'b00_01_00_00_10; // Jogador 1 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd8: data_out = 10'b10_00_01_00_00; // Jogador 2 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd9: data_out = 10'b00_10_01_00_00; // Jogador 2 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd10: data_out = 10'b00_00_01_10_00; // Jogador 2 ?? o lobo, Jogador 3 ?? o m??dico
+        5'd11: data_out = 10'b00_00_01_00_10; // Jogador 2 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd12: data_out = 10'b10_00_00_01_00; // Jogador 3 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd13: data_out = 10'b00_10_00_01_00; // Jogador 3 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd14: data_out = 10'b00_00_10_01_00; // Jogador 3 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd15: data_out = 10'b00_00_00_01_10; // Jogador 3 ?? o lobo, Jogador 4 ?? o m??dico
+        5'd16: data_out = 10'b10_00_00_00_01; // Jogador 4 ?? o lobo, Jogador 0 ?? o m??dico
+        5'd17: data_out = 10'b00_10_00_00_01; // Jogador 4 ?? o lobo, Jogador 1 ?? o m??dico
+        5'd18: data_out = 10'b00_00_10_00_01; // Jogador 4 ?? o lobo, Jogador 2 ?? o m??dico
+        5'd19: data_out = 10'b00_00_00_10_01; // Jogador 4 ?? o lobo, Jogador 3 ?? o m??dico
         default: data_out = 10'b01_10_00_00_00;
     endcase
 end
@@ -708,7 +873,11 @@ module unidade_controle(
         output reg reset_Pular,
 
         output reg [4:0] db_estado,
-        output reg voto,
+        output reg votacao,
+		  output reg vitoria_lobo,
+		  output reg vitoria_cidadao,
+		  output reg zera_CT,
+          output reg discussao,
         output reg morra
     );
 
@@ -805,6 +974,10 @@ module unidade_controle(
         rst_global = (Eatual == INICIAL || Eatual == RESETA_TUDO);  
 
         zera_CS = (Eatual == INICIAL || Eatual == RESETA_TUDO);
+		  
+		zera_CT = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == DIA_INICIO || Eatual == DIA_VOTO);
+
+        discussao = (Eatual == DIA_DISCUSSAO);
         
         mostra_classe = (Eatual == TURNO_NOITE);
 
@@ -824,9 +997,13 @@ module unidade_controle(
 
         inc_jogador = (Eatual == PROXIMO_JOGADOR_NOITE);
         
-        voto = (Eatual == DIA_VOTO);
+        votacao = (Eatual == DIA_VOTO);
         
         morra = (Eatual == MATARAM_O_MARUITI);
+		  
+		  vitoria_lobo = (Eatual == LOBO_GANHOU);
+		  
+		  vitoria_cidadao = (Eatual == LOBO_PERDEU);
 
 
     end
