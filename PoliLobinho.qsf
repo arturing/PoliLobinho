@@ -88,6 +88,9 @@ set_location_assignment PIN_W9 -to jogar
 set_location_assignment PIN_M7 -to passa
 set_location_assignment PIN_M6 -to reset
 set_location_assignment PIN_AA2 -to db_clock
+set_global_assignment -name VERILOG_FILE full_adder.v
+set_global_assignment -name VERILOG_FILE conta_mortes.v
+set_global_assignment -name VERILOG_FILE adder_3b.v
 set_global_assignment -name VERILOG_FILE regJogadorConvertor.v
 set_global_assignment -name VERILOG_FILE class_parser.v
 set_global_assignment -name VERILOG_FILE registrador_4.v
