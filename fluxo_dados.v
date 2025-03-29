@@ -72,7 +72,7 @@ module fluxo_dados(
     .fim()
     );
 	 
-	 contador_m #(.M(500), .N(9)) CONTA_SEGUNDOS(
+	 contador_m #(.M(10000), .N(14)) CONTA_SEGUNDOS(
     .clock(clock_10k),
     .zera(zera_CT),
     .conta(discussao),
