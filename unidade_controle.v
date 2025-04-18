@@ -42,7 +42,7 @@ module unidade_controle(
     parameter FIM_NOITE = 5'd8;
     parameter DELAY_NOITE = 5'd9;
     parameter AVALIAR_ELIMINACAO_NOITE = 5'd10;
-    parameter ANUNCIAR_MORTE = 5'd11;
+    //parameter ANUNCIAR_MORTE = 5'd11;
     parameter CHECAR_VIVO = 5'd12;
     parameter DIA_INICIO = 5'd13;
     parameter DIA_DISCUSSAO = 5'd14;
@@ -84,9 +84,9 @@ module unidade_controle(
             DELAY_NOITE: Eprox = (passa) ? TURNO_NOITE : DELAY_NOITE;
             TURNO_NOITE: Eprox = (passa && jogou) ? ((CJ_fim) ? FIM_NOITE : PROXIMO_JOGADOR_NOITE ) : TURNO_NOITE;
             FIM_NOITE: Eprox = AVALIAR_ELIMINACAO_NOITE;
-            AVALIAR_ELIMINACAO_NOITE: Eprox = ANUNCIAR_MORTE;
+            AVALIAR_ELIMINACAO_NOITE: Eprox = CHECAR_LOBO_GANHOU_NOITE;
             // ANUNCIAR_MORTE: Eprox = (passa) ? DIA_INICIO : ANUNCIAR_MORTE;
-            ANUNCIAR_MORTE: Eprox = (passa) ? CHECAR_LOBO_GANHOU_NOITE : ANUNCIAR_MORTE;
+            //ANUNCIAR_MORTE: Eprox = (passa) ? CHECAR_LOBO_GANHOU_NOITE : ANUNCIAR_MORTE;
 
             CHECAR_LOBO_GANHOU_NOITE: Eprox = (sinal_lobo_ganhou) ? LOBO_GANHOU : DIA_INICIO;
             CHECAR_LOBO_GANHOU_DIA: Eprox = (sinal_lobo_ganhou) ? LOBO_GANHOU : PREPARA_NOITE;
@@ -137,7 +137,7 @@ module unidade_controle(
 
         reset_Convertor = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == PROXIMO_JOGADOR_NOITE || Eatual == DELAY_NOITE || Eatual == DIA_DISCUSSAO);
 
-        reset_Pular = (Eatual == INICIAL || Eatual == RESETA_TUDO || Eatual == FIM_NOITE || Eatual == PREPARA_NOITE);
+        reset_Pular = (Eatual != TURNO_NOITE && Eatual != DIA_VOTO && Eatual != AVALIAR_ELIMINACAO_NOITE && Eatual != MATARAM_O_MARUITI);
 
         avaliar_eliminacao = (Eatual == AVALIAR_ELIMINACAO_NOITE);
         
@@ -171,14 +171,17 @@ module unidade_controle(
             FIM_NOITE: db_estado = FIM_NOITE;
             DELAY_NOITE: db_estado = DELAY_NOITE;
             AVALIAR_ELIMINACAO_NOITE: db_estado = AVALIAR_ELIMINACAO_NOITE;
-            ANUNCIAR_MORTE: db_estado = ANUNCIAR_MORTE;
+            //ANUNCIAR_MORTE: db_estado = ANUNCIAR_MORTE;
             DIA_INICIO: db_estado = DIA_INICIO;
             DIA_DISCUSSAO: db_estado = DIA_DISCUSSAO;
             DIA_VOTO: db_estado = DIA_VOTO;
             PROCESSA_VOTO: db_estado = PROCESSA_VOTO;
             MATARAM_O_MARUITI: db_estado = MATARAM_O_MARUITI;
             LOBO_PERDEU: db_estado = LOBO_PERDEU;
+				LOBO_GANHOU: db_estado = LOBO_GANHOU;
             CHECAR_LOBO_GANHOU_NOITE: db_estado = CHECAR_LOBO_GANHOU_NOITE;
+				CHECAR_LOBO_GANHOU_DIA: db_estado = CHECAR_LOBO_GANHOU_DIA;
+				
             default:     db_estado = 5'b11111; //erro
         endcase
     end

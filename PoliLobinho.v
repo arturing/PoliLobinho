@@ -1,6 +1,6 @@
 module PoliLobinho(
 	input clock,
-	input clock_10k,
+	input clock_1k,
 	input pular,
 	input [4:0] botoes_jogadores,
 	input reset,
@@ -20,10 +20,9 @@ module PoliLobinho(
 	 output db_clock,
 	 //output ganhamo,
 	 //output votaram,
-	 output votacao,
-	 output vitoria_lobo,
-	 output vitoria_cidadao,
+	 output [2:0] RGB_estado,
 	 output timeout,
+	 output buzzer_sinal,
 	 output [2:0] db_funcoes
 );
 
@@ -55,6 +54,7 @@ wire jogou;
 ////////////////////////// mudei aqui
 wire sinal_lobo_ganhou;
 wire zera_CT, discussao;
+wire w_passa_filtrado;
 
 wire [6:0] w_db_jogador_atual;
 wire [6:0] w_db_jogador_escolhido;
@@ -70,13 +70,19 @@ assign w_passa = !passa;
 assign votacao = w_votacao;
 
 assign db_jogador_atual = ~w_db_jogador_atual;
-assign db_jogador_escolhido = ~w_db_jogador_escolhido;
+assign db_jogador_escolhido = (((jogador_escolhido == 3'd5) || (jogador_escolhido == 3'd7)) ? ((jogador_escolhido == 3'd5) ? 7'b1110011  : 7'd0) : ~w_db_jogador_escolhido);
 
+edge_detector DEBOUNCE_PASSA(
+    .clock(clock_1k),
+    .reset(rst_global),
+    .sinal(w_passa),
+    .pulso(w_passa_filtrado)
+);
 
 edge_detector DETECTA_PASSA(
     .clock(clock),
     .reset(rst_global),
-    .sinal(w_passa),
+    .sinal(w_passa_filtrado),
     .pulso(pulso_passa)
 );
 
@@ -89,7 +95,7 @@ regJogadorConvertor CONVERTE_JOGADOR(
 
 fluxo_dados FD(
 	.clock(clock),
-	.clock_10k(clock_10k),
+	.clock_1k(clock_1k),
 //	.botao(w_botao),
 
 	.e_seed_reg(e_seed_reg),
@@ -104,6 +110,7 @@ fluxo_dados FD(
 	.morra(w_morra),
 	.reset_Pular(reset_Pular),
 	.discussao(discussao),
+	
 
 	.CJ_fim(CJ_fim),
     .jogo_atual(jogo_atual),
@@ -117,6 +124,7 @@ fluxo_dados FD(
 	.db_mortes(db_mortes),
 	.jogador_vivo(jogador_vivo),
 	.timeout(timeout),
+	.buzzer_sinal(buzzer_sinal),
 
     .db_seed(db_seed),
 	 .acertou(w_acertou),
@@ -204,6 +212,12 @@ hexa7seg disp6 (
 class_to_led_converter CONVERTER_LED(
 	.class(classe_atual),
 	.LEDs(db_funcoes)	
+);
+
+RGB_estado_converter RGB_LED_CONVERT(
+	.db_estado(db_estado),
+	.clock(clock),
+	.RGB_estado(RGB_estado)
 );
 
 endmodule

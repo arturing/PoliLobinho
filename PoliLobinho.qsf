@@ -54,7 +54,6 @@ set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_RO
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
-set_location_assignment PIN_U7 -to botao
 set_location_assignment PIN_AA22 -to db_classe_atual[6]
 set_location_assignment PIN_Y21 -to db_classe_atual[5]
 set_location_assignment PIN_Y22 -to db_classe_atual[4]
@@ -62,13 +61,13 @@ set_location_assignment PIN_W21 -to db_classe_atual[3]
 set_location_assignment PIN_W22 -to db_classe_atual[2]
 set_location_assignment PIN_V21 -to db_classe_atual[1]
 set_location_assignment PIN_U21 -to db_classe_atual[0]
-set_location_assignment PIN_AA20 -to db_jogador_atual[0]
-set_location_assignment PIN_AB20 -to db_jogador_atual[1]
-set_location_assignment PIN_AA19 -to db_jogador_atual[2]
-set_location_assignment PIN_AA18 -to db_jogador_atual[3]
-set_location_assignment PIN_AB18 -to db_jogador_atual[4]
-set_location_assignment PIN_AA17 -to db_jogador_atual[5]
-set_location_assignment PIN_U22 -to db_jogador_atual[6]
+set_location_assignment PIN_N20 -to db_jogador_atual[0]
+set_location_assignment PIN_M22 -to db_jogador_atual[1]
+set_location_assignment PIN_L22 -to db_jogador_atual[2]
+set_location_assignment PIN_P16 -to db_jogador_atual[3]
+set_location_assignment PIN_L18 -to db_jogador_atual[4]
+set_location_assignment PIN_L19 -to db_jogador_atual[5]
+set_location_assignment PIN_K19 -to db_jogador_atual[6]
 set_location_assignment PIN_N9 -to db_estado_7b[0]
 set_location_assignment PIN_M8 -to db_estado_7b[1]
 set_location_assignment PIN_T14 -to db_estado_7b[2]
@@ -85,9 +84,51 @@ set_location_assignment PIN_V14 -to db_seed_7b[4]
 set_location_assignment PIN_AB22 -to db_seed_7b[5]
 set_location_assignment PIN_AB21 -to db_seed_7b[6]
 set_location_assignment PIN_W9 -to jogar
-set_location_assignment PIN_M7 -to passa
+set_location_assignment PIN_T22 -to passa
 set_location_assignment PIN_M6 -to reset
 set_location_assignment PIN_AA2 -to db_clock
+set_location_assignment PIN_U20 -to db_atacado_7b[0]
+set_location_assignment PIN_Y20 -to db_atacado_7b[1]
+set_location_assignment PIN_V20 -to db_atacado_7b[2]
+set_location_assignment PIN_U16 -to db_atacado_7b[3]
+set_location_assignment PIN_U15 -to db_atacado_7b[4]
+set_location_assignment PIN_Y15 -to db_atacado_7b[5]
+set_location_assignment PIN_P9 -to db_atacado_7b[6]
+set_location_assignment PIN_B16 -to botoes_jogadores[0]
+set_location_assignment PIN_C16 -to botoes_jogadores[1]
+set_location_assignment PIN_K20 -to botoes_jogadores[2]
+set_location_assignment PIN_K22 -to botoes_jogadores[3]
+set_location_assignment PIN_M21 -to botoes_jogadores[4]
+set_location_assignment PIN_P19 -to db_funcoes[0]
+set_location_assignment PIN_N19 -to db_funcoes[1]
+set_location_assignment PIN_P17 -to db_funcoes[2]
+set_location_assignment PIN_N16 -to db_jogador_escolhido[0]
+set_location_assignment PIN_M16 -to db_jogador_escolhido[1]
+set_location_assignment PIN_D17 -to db_jogador_escolhido[2]
+set_location_assignment PIN_K21 -to db_jogador_escolhido[3]
+set_location_assignment PIN_M20 -to db_jogador_escolhido[4]
+set_location_assignment PIN_N21 -to db_jogador_escolhido[5]
+set_location_assignment PIN_R21 -to db_jogador_escolhido[6]
+set_location_assignment PIN_Y16 -to db_protegido_7b[0]
+set_location_assignment PIN_W16 -to db_protegido_7b[1]
+set_location_assignment PIN_Y17 -to db_protegido_7b[2]
+set_location_assignment PIN_V16 -to db_protegido_7b[3]
+set_location_assignment PIN_U17 -to db_protegido_7b[4]
+set_location_assignment PIN_V18 -to db_protegido_7b[5]
+set_location_assignment PIN_V19 -to db_protegido_7b[6]
+set_location_assignment PIN_R17 -to db_mortes[0]
+set_location_assignment PIN_P18 -to db_mortes[1]
+set_location_assignment PIN_K17 -to db_mortes[2]
+set_location_assignment PIN_L17 -to db_mortes[3]
+set_location_assignment PIN_M18 -to db_mortes[4]
+set_location_assignment PIN_R22 -to pular
+set_location_assignment PIN_AA1 -to timeout
+set_location_assignment PIN_T18 -to RGB_estado[2]
+set_location_assignment PIN_T15 -to RGB_estado[1]
+set_location_assignment PIN_T20 -to RGB_estado[0]
+set_location_assignment PIN_R15 -to buzzer_sinal
+set_location_assignment PIN_H16 -to clock_1k
+set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
 set_global_assignment -name VERILOG_FILE full_adder.v
 set_global_assignment -name VERILOG_FILE conta_mortes.v
 set_global_assignment -name VERILOG_FILE adder_3b.v
@@ -102,4 +143,4 @@ set_global_assignment -name VERILOG_FILE fluxo_dados.v
 set_global_assignment -name VERILOG_FILE PoliLobinho.v
 set_global_assignment -name VERILOG_FILE hexa7seg.v
 set_global_assignment -name VERILOG_FILE estado7seg.v
-set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
+set_global_assignment -name VERILOG_FILE RGB_estado_converter.v

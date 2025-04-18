@@ -1,6 +1,6 @@
 module fluxo_dados(
         input clock,
-		  input clock_10k,
+		  input clock_1k,
     //    input botao,
 
         input e_seed_reg,
@@ -22,6 +22,7 @@ module fluxo_dados(
 
         output CJ_fim,
 		  output timeout,
+		  output buzzer_sinal,
         output [9:0] jogo_atual,
         output [1:0] classe_atual,
         output [2:0] jogador_atual,
@@ -72,15 +73,15 @@ module fluxo_dados(
     .fim()
     );
 	 
-	 contador_m #(.M(10000), .N(14)) CONTA_SEGUNDOS(
-    .clock(clock_10k),
+	 contador_m #(.M(1001), .N(10)) CONTA_SEGUNDOS(
+    .clock(clock_1k),
     .zera(zera_CT),
     .conta(discussao),
     .Q(),
     .fim(fim_segundo)
     );
 	 
-	 contador_m #(.M(60), .N(6)) CONTA_MINUTOS(
+	 contador_m #(.M(61), .N(6)) CONTA_MINUTOS(
     .clock(fim_segundo),
     .zera(zera_CT),
     .conta(discussao),
@@ -95,6 +96,16 @@ module fluxo_dados(
     .Q(),
     .fim(timeout)
     );
+	 
+	 contador_m #(.M(3), .N(2)) CONTA_BUZZER(
+    .clock(fim_segundo),
+    .zera(zera_CT),
+    .conta(discussao && timeout),
+    .Q(),
+    .fim(buzzer_sinal)
+    );
+	
+	 
 
     seed_rom SEED_MEM(
         .clock(clock),
@@ -158,10 +169,10 @@ module fluxo_dados(
 
     always@(posedge clock) begin
         if (rst_global) mortes <= 5'b00000;
+		  else if (reset_Pular) mortes[5'd5] <= 1'b0;
         else if (avaliar_eliminacao) begin
             if (atacado != protegido || mortes[medico_posicao]) mortes[atacado] <= 1;
         end else if (morra) mortes[votado] <= 1'b1;
-        else if (reset_Pular) mortes[5'd5] <= 1'b0;
     end
 
     always@(posedge clock) begin
